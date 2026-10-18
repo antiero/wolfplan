@@ -47,13 +47,13 @@ export const DinnerPlanView: React.FC = () => {
       case 'partner2':
         return { label: `${p2.name} Cooking`, color: 'bg-emerald-600/30 text-emerald-300 border-emerald-600/50' };
       case 'both':
-        return { label: 'Both Cooking Together 💕', color: 'bg-rose-950/60 text-rose-300 border-rose-800/60' };
+        return { label: 'Both Cooking', color: 'bg-rose-950/50 text-rose-300 border-rose-800/50' };
       case 'takeaway':
-        return { label: 'Takeaway / Order In 🥡', color: 'bg-orange-950/60 text-orange-300 border-orange-800/60' };
+        return { label: 'Takeaway', color: 'bg-orange-950/50 text-orange-300 border-orange-800/50' };
       case 'eating_out':
-        return { label: 'Eating Out / Restaurant 🍷', color: 'bg-purple-950/60 text-purple-300 border-purple-800/60' };
+        return { label: 'Eating Out', color: 'bg-purple-950/50 text-purple-300 border-purple-800/50' };
       default:
-        return { label: 'Leftovers 🍲', color: 'bg-stone-800 text-stone-300 border-stone-700' };
+        return { label: 'Leftovers', color: 'bg-stone-800 text-stone-300 border-stone-700' };
     }
   };
 
@@ -78,7 +78,7 @@ export const DinnerPlanView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-5 pb-20">
+    <div className="space-y-4 pb-28">
       
       {/* Page Title & Controls */}
       <div className="bg-stone-900/90 border border-stone-800 rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

@@ -127,11 +127,11 @@ export const WeekendVibesCard: React.FC<WeekendVibesCardProps> = ({ day, dateStr
             updateWeekendVibes(day, {
               enabled: true,
               mood: 'chill_reset',
-              morningVibe: 'Sleep in & cozy morning coffee with Wolfy',
-              afternoonPlan: 'Leisurely stroll & dog park visit',
-              eveningVibe: 'Relaxing dinner & movie',
+              morningVibe: 'Sleep in & coffee',
+              afternoonPlan: 'Stroll & dog park',
+              eveningVibe: 'Relaxing dinner',
               noAlarm: true,
-              funTags: ['No Alarm ⏰', 'Cozy ☕', 'Wolfy Cuddles 🐾'],
+              funTags: ['No Alarm', 'Coffee', 'Wolfy'],
             });
           }}
           className="mt-3 px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs"

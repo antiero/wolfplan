@@ -49,22 +49,12 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <div
             onClick={() => setActiveTab('routine')}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2 cursor-pointer group"
           >
-            <WolfyAvatar size="md" mood="happy" showBadge badgeText="🐾" />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-xl tracking-tight text-amber-100 font-serif group-hover:text-amber-400 transition-colors">
-                  Wolfy
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-700/40">
-                  Couple Sync
-                </span>
-              </div>
-              <p className="text-[11px] text-stone-400 font-medium hidden sm:block">
-                Weekly routine & dinner plan for {settings.partner1.name} & {settings.partner2.name}
-              </p>
-            </div>
+            <WolfyAvatar size="sm" mood="happy" />
+            <span className="font-extrabold text-lg tracking-tight text-amber-100 font-serif group-hover:text-amber-400 transition-colors">
+              Wolfy
+            </span>
           </div>
         </div>
 
@@ -238,7 +228,7 @@ export const Header: React.FC = () => {
           {/* Invite Partner Button */}
           <button
             onClick={() => setIsInviteModalOpen(true)}
-            className="p-2 rounded-full bg-stone-800/80 hover:bg-stone-700 border border-stone-700 text-stone-300 hover:text-amber-300 transition-colors"
+            className="hidden sm:flex p-2 rounded-full bg-stone-800/80 hover:bg-stone-700 border border-stone-700 text-stone-300 hover:text-amber-300 transition-colors"
             title="Invite Partner"
           >
             <UserPlus className="w-4 h-4" />

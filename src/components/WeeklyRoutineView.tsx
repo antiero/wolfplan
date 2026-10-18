@@ -20,15 +20,13 @@ import {
   PawPrint,
   Utensils,
   ChevronRight,
-  Plus,
   Edit2,
   Calendar,
   Layers,
-  HeartHandshake,
   Cloud,
   Upload,
-  Download,
-  ShieldCheck,
+  RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 
 export const WeeklyRoutineView: React.FC = () => {
@@ -45,8 +43,9 @@ export const WeeklyRoutineView: React.FC = () => {
     googleAccessToken,
     loginWithGoogle,
     setIsCalendarModalOpen,
-    isCloudSyncing,
-    lastCloudSync,
+    populateFromPreviousWeek,
+    startFromScratch,
+    hasCompletedFirstWeek,
   } = useWolfy();
 
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -65,232 +64,188 @@ export const WeeklyRoutineView: React.FC = () => {
     switch (loc) {
       case 'wfh':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-sky-950/60 text-sky-300 border border-sky-800/60 px-1.5 py-0.5 rounded-md">
-            <Laptop className="w-3 h-3" /> WFH
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-sky-300 bg-sky-950/40 border border-sky-800/40 px-1.5 py-0.2 rounded-md">
+            <Laptop className="w-2.5 h-2.5" /> WFH
           </span>
         );
       case 'office':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 px-1.5 py-0.5 rounded-md">
-            <Building className="w-3 h-3" /> Office
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-300 bg-indigo-950/40 border border-indigo-800/40 px-1.5 py-0.2 rounded-md">
+            <Building className="w-2.5 h-2.5" /> Office
           </span>
         );
       case 'travel':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-950/60 text-purple-300 border border-purple-800/60 px-1.5 py-0.5 rounded-md">
-            <Plane className="w-3 h-3" /> Travel
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-purple-300 bg-purple-950/40 border border-purple-800/40 px-1.5 py-0.2 rounded-md">
+            <Plane className="w-2.5 h-2.5" /> Travel
           </span>
         );
       default:
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-stone-800 text-stone-300 px-1.5 py-0.5 rounded-md">
-            <Sun className="w-3 h-3 text-amber-400" /> Free / Off
-          </span>
-        );
+        return null;
     }
   };
 
   const getCookLabel = (cook: string) => {
-    if (cook === 'partner1') return `${p1.name} cooking`;
-    if (cook === 'partner2') return `${p2.name} cooking`;
-    if (cook === 'both') return `Both cooking together 💕`;
-    if (cook === 'takeaway') return `Takeaway / Delivery 🥡`;
-    if (cook === 'eating_out') return `Eating out 🍷`;
-    return `Leftovers 🍲`;
+    if (cook === 'partner1') return `${p1.shortName} cooking`;
+    if (cook === 'partner2') return `${p2.shortName} cooking`;
+    if (cook === 'both') return 'Both cooking';
+    if (cook === 'takeaway') return 'Takeaway';
+    if (cook === 'eating_out') return 'Eating out';
+    return 'Leftovers';
   };
 
   return (
-    <div className="space-y-5 pb-20">
-      {/* Sunday Prompt Banner */}
+    <div className="space-y-4 pb-20">
+      
+      {/* Calm Sunday Check-in Banner */}
       <SundayPromptBanner />
 
-      {/* Google Calendar & Persistent Cloud Storage Card */}
-      {!authUser ? (
-        <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-emerald-950/40 border border-emerald-800/40 rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-400 shrink-0">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-emerald-200">
-                  Google Calendar & Persistent Cloud Storage
-                </h4>
-                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.2 rounded-full border border-emerald-500/30">
-                  Google Workspace
-                </span>
-              </div>
-              <p className="text-xs text-stone-300 mt-0.5 leading-relaxed">
-                Connect your Google account to sync rough routines to Google Calendar and back up your couple's weekly data in Firestore so it's never lost.
-              </p>
-            </div>
+      {/* Week Day Ribbon & Quick Controls (Phone Optimized) */}
+      <div className="bg-[#181514] border border-stone-800/80 rounded-2xl p-2 sm:p-2.5 shadow-sm space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Day Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-1">
+            {schedule.map((dayItem) => {
+              const isSelected = dayItem.day === selectedDay;
+              const hasWolfy = dayItem.partner1.am.wolfyDuty || dayItem.partner2.am.wolfyDuty;
+              return (
+                <button
+                  key={dayItem.day}
+                  onClick={() => {
+                    setSelectedDay(dayItem.day);
+                    setViewMode('day');
+                  }}
+                  className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex flex-col items-center min-w-[48px] shrink-0 ${
+                    isSelected && viewMode === 'day'
+                      ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
+                      : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
+                  }`}
+                >
+                  <span className="text-[11px] uppercase tracking-wider">{dayItem.shortLabel}</span>
+                  <span className="text-[9px] opacity-75">{dayItem.dateStr.split(' ')[1]}</span>
+                  {hasWolfy && (
+                    <span className="absolute top-0.5 right-1 text-[8px]">🐾</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          <button
-            onClick={loginWithGoogle}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-900 font-bold text-xs shadow-md transition-all self-start sm:self-center shrink-0 cursor-pointer"
-          >
-            <div className="w-3.5 h-3.5 shrink-0">
-              <svg viewBox="0 0 48 48" className="w-full h-full block">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-              </svg>
-            </div>
-            <span>Sign in with Google</span>
-          </button>
-        </div>
-      ) : (
-        <div className="bg-stone-900/90 border border-emerald-800/40 rounded-2xl p-3.5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="p-1.5 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
-              <Calendar className="w-4 h-4" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-stone-200">
-                  Google Calendar & Cloud Sync Connected
-                </span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-1.5 py-0.2 rounded-md">
-                  Active
-                </span>
-              </div>
-              <p className="text-[11px] text-stone-400 mt-0.5">
-                {authUser.displayName || authUser.email} • Continuous Firestore Backup
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-0.5 bg-stone-950 p-1 rounded-xl border border-stone-800/80 shrink-0">
             <button
-              onClick={() => setIsCalendarModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              onClick={() => setViewMode('day')}
+              className={`p-1.5 rounded-lg text-xs transition-colors ${
+                viewMode === 'day' ? 'bg-stone-800 text-amber-200' : 'text-stone-400'
+              }`}
+              title="Day View"
             >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Sync with Google Calendar</span>
+              <Calendar className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('week')}
+              className={`p-1.5 rounded-lg text-xs transition-colors ${
+                viewMode === 'week' ? 'bg-stone-800 text-amber-200' : 'text-stone-400'
+              }`}
+              title="Week Grid View"
+            >
+              <Layers className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
-      )}
 
-      {/* Week Day Selector & View Mode Switcher */}
-      <div className="bg-stone-900/90 border border-stone-800 rounded-2xl p-2.5 shadow-md flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Day Pills */}
-        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          {schedule.map((dayItem) => {
-            const isSelected = dayItem.day === selectedDay;
-            // Quick status highlights
-            const hasWolfy = dayItem.partner1.am.wolfyDuty || dayItem.partner2.am.wolfyDuty;
-            return (
+        {/* Quiet Zen Agenda Actions Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-stone-800/50 text-[11px] text-stone-400">
+          <div className="flex items-center gap-2">
+            {hasCompletedFirstWeek && (
               <button
-                key={dayItem.day}
-                onClick={() => {
-                  setSelectedDay(dayItem.day);
-                  setViewMode('day');
-                }}
-                className={`relative px-3 py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center min-w-[50px] shrink-0 ${
-                  isSelected && viewMode === 'day'
-                    ? 'bg-amber-500 text-stone-950 shadow-md shadow-amber-500/20 scale-102'
-                    : 'bg-stone-950/50 text-stone-400 hover:text-stone-200 hover:bg-stone-800'
-                }`}
+                onClick={populateFromPreviousWeek}
+                className="flex items-center gap-1 hover:text-amber-300 transition-colors cursor-pointer"
+                title="Copy AM/PM routine blocks from previous week"
               >
-                <span className="uppercase text-[11px]">{dayItem.shortLabel}</span>
-                <span className="text-[10px] font-normal opacity-80">{dayItem.dateStr.split(' ')[1]}</span>
-                {hasWolfy && (
-                  <span className="absolute -top-1 -right-0.5 text-[9px]">🐾</span>
-                )}
+                <RefreshCw className="w-3 h-3 text-amber-400" />
+                <span>Pre-populate Last Week</span>
               </button>
-            );
-          })}
-        </div>
+            )}
+            <span className="text-stone-600">•</span>
+            <button
+              onClick={startFromScratch}
+              className="hover:text-stone-300 transition-colors cursor-pointer"
+              title="Clear routine to blank template"
+            >
+              Start from Scratch
+            </button>
+          </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center gap-1 self-end sm:self-auto bg-stone-950 p-1 rounded-xl border border-stone-800 shrink-0">
-          <button
-            onClick={() => setViewMode('day')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              viewMode === 'day'
-                ? 'bg-stone-800 text-amber-200 shadow-xs'
-                : 'text-stone-400 hover:text-stone-200'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Day View</span>
-          </button>
-          <button
-            onClick={() => setViewMode('week')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              viewMode === 'week'
-                ? 'bg-stone-800 text-amber-200 shadow-xs'
-                : 'text-stone-400 hover:text-stone-200'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Full Week</span>
-          </button>
+          {/* Google Calendar quick status */}
+          <div>
+            {authUser ? (
+              <button
+                onClick={() => setIsCalendarModalOpen(true)}
+                className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                <Cloud className="w-3 h-3 text-emerald-400" />
+                <span>Calendar Sync</span>
+              </button>
+            ) : (
+              <button
+                onClick={loginWithGoogle}
+                className="flex items-center gap-1 text-stone-400 hover:text-stone-200 transition-colors"
+              >
+                <span>+ Google Calendar</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {viewMode === 'day' ? (
         /* ================= SINGLE DAY VIEW ================= */
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           
-          {/* Day Title & Quick Summary Header */}
-          <div className="flex items-center justify-between px-1">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-stone-100 font-serif flex items-center gap-2">
-                <span>{currentDayData.dayLabel}</span>
-                <span className="text-sm font-sans font-medium text-amber-400">
-                  {currentDayData.dateStr}
-                </span>
-              </h2>
-              <p className="text-xs text-stone-400 mt-0.5">
-                Rough daily routine & dinner plan
-              </p>
-            </div>
+          {/* Day Title */}
+          <div className="flex items-center justify-between px-1 pt-1">
+            <h2 className="text-lg sm:text-xl font-bold text-stone-100 font-serif flex items-center gap-2">
+              <span>{currentDayData.dayLabel}</span>
+              <span className="text-xs font-sans font-normal text-amber-400">
+                {currentDayData.dateStr}
+              </span>
+            </h2>
 
-            <div className="flex items-center gap-2">
-              {/* Wolfy Walker indicator */}
-              {(currentDayData.partner1.am.wolfyDuty || currentDayData.partner2.am.wolfyDuty) && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-950/60 border border-amber-800/40 text-[11px] text-amber-300 font-medium">
-                  <WolfyAvatar size="sm" mood="walkies" />
-                  <span>
-                    Wolfy Walk: {currentDayData.partner1.am.wolfyDuty ? p1.name : p2.name}
-                  </span>
-                </div>
-              )}
-            </div>
+            {/* Wolfy Walker indicator */}
+            {(currentDayData.partner1.am.wolfyDuty || currentDayData.partner2.am.wolfyDuty) && (
+              <span className="text-[11px] text-amber-300/90 flex items-center gap-1 font-medium bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-900/40">
+                <PawPrint className="w-3 h-3" />
+                <span>Walk: {currentDayData.partner1.am.wolfyDuty ? p1.shortName : p2.shortName}</span>
+              </span>
+            )}
           </div>
 
-          {/* Weekend Vibes Mode Banner & Card (For Saturday & Sunday) */}
+          {/* Weekend Vibes Mode Card (Saturday & Sunday) */}
           {(currentDayData.day === 'saturday' || currentDayData.day === 'sunday') && (
             <WeekendVibesCard day={currentDayData.day} dateStr={currentDayData.dateStr} />
           )}
 
-          {/* Two Partners Grid (Side-by-Side on Tablet/Desktop, Stacked/Swipeable on Mobile) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Side-by-side or stacked Partner cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             
-            {/* PARTNER 1 CARD */}
-            <div className={`bg-stone-900 border rounded-2xl p-4 sm:p-5 shadow-lg transition-all ${
-              activeUser === 'partner1' ? 'border-amber-600/60 ring-1 ring-amber-500/20' : 'border-stone-800'
+            {/* PARTNER 1 */}
+            <div className={`bg-[#181514] border rounded-2xl p-3.5 sm:p-4 transition-all ${
+              activeUser === 'partner1' ? 'border-amber-600/40 ring-1 ring-amber-500/10' : 'border-stone-800/80'
             }`}>
-              <div className="flex items-center justify-between pb-3 border-b border-stone-800">
-                <div className="flex items-center gap-2.5">
-                  <span className={`w-8 h-8 rounded-full ${p1.avatarBg} text-white font-bold flex items-center justify-center text-xs shadow-xs`}>
+              <div className="flex items-center justify-between pb-2 border-b border-stone-800/60">
+                <div className="flex items-center gap-2">
+                  <span className={`w-6 h-6 rounded-full ${p1.avatarBg} text-white font-bold flex items-center justify-center text-[10px]`}>
                     {p1.shortName.charAt(0)}
                   </span>
-                  <div>
-                    <h3 className="font-bold text-sm sm:text-base text-stone-100 flex items-center gap-1.5">
-                      <span>{p1.name}</span>
-                      {activeUser === 'partner1' && (
-                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-full border border-amber-500/40 font-medium">
-                          You
-                        </span>
-                      )}
-                    </h3>
-                    <p className="text-[11px] text-stone-400">Partner 1 Schedule</p>
-                  </div>
+                  <span className="font-bold text-xs sm:text-sm text-stone-200">
+                    {p1.name}
+                  </span>
+                  {activeUser === 'partner1' && (
+                    <span className="text-[9px] bg-amber-500/15 text-amber-300 px-1.5 py-0.2 rounded-full font-medium">
+                      You
+                    </span>
+                  )}
                 </div>
 
                 <button
@@ -302,11 +257,10 @@ export const WeeklyRoutineView: React.FC = () => {
                       block: currentDayData.partner1.am,
                     })
                   }
-                  className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-300 text-xs flex items-center gap-1 transition-colors"
+                  className="p-1 text-stone-400 hover:text-amber-300"
                   title="Edit schedule"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden sm:inline">Edit</span>
+                  <Edit2 className="w-3 h-3" />
                 </button>
               </div>
 
@@ -320,31 +274,25 @@ export const WeeklyRoutineView: React.FC = () => {
                     block: currentDayData.partner1.am,
                   })
                 }
-                className="mt-3.5 p-3.5 rounded-xl bg-stone-950/60 hover:bg-stone-950/90 border border-stone-800/80 hover:border-amber-500/40 transition-all cursor-pointer group"
+                className="mt-2.5 p-2.5 rounded-xl bg-stone-950/50 hover:bg-stone-950/80 border border-stone-800/60 transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                    <Sun className="w-3.5 h-3.5 text-amber-400" /> AM Routine
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
+                    <Sun className="w-3 h-3 text-amber-400" /> AM
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     {getLocationBadge(currentDayData.partner1.am.workLocation)}
                     {currentDayData.partner1.am.wolfyDuty && (
-                      <span className="text-[10px] font-semibold bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                        <PawPrint className="w-3 h-3" /> Walk Duty
+                      <span className="text-[9px] text-amber-300 bg-amber-900/30 px-1 rounded-sm">
+                        🐾 Walk
                       </span>
                     )}
                   </div>
                 </div>
 
-                <p className="text-sm font-semibold text-stone-200 group-hover:text-amber-100 transition-colors">
-                  {currentDayData.partner1.am.activity || 'Flexible / No plan set'}
+                <p className="text-xs font-medium text-stone-200 group-hover:text-amber-100 transition-colors">
+                  {currentDayData.partner1.am.activity || '—'}
                 </p>
-
-                {currentDayData.partner1.am.notes && (
-                  <p className="text-xs text-stone-400 mt-1 italic">
-                    "{currentDayData.partner1.am.notes}"
-                  </p>
-                )}
               </div>
 
               {/* PM Block */}
@@ -357,54 +305,38 @@ export const WeeklyRoutineView: React.FC = () => {
                     block: currentDayData.partner1.pm,
                   })
                 }
-                className="mt-3 p-3.5 rounded-xl bg-stone-950/60 hover:bg-stone-950/90 border border-stone-800/80 hover:border-amber-500/40 transition-all cursor-pointer group"
+                className="mt-2 p-2.5 rounded-xl bg-stone-950/50 hover:bg-stone-950/80 border border-stone-800/60 transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1">
-                    <Moon className="w-3.5 h-3.5 text-indigo-400" /> PM Routine
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-indigo-300 flex items-center gap-1">
+                    <Moon className="w-3 h-3 text-indigo-400" /> PM
                   </span>
-                  <div className="flex items-center gap-1.5">
-                    {getLocationBadge(currentDayData.partner1.pm.workLocation)}
-                    {currentDayData.partner1.pm.wolfyDuty && (
-                      <span className="text-[10px] font-semibold bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                        <PawPrint className="w-3 h-3" /> Walk Duty
-                      </span>
-                    )}
-                  </div>
+                  {getLocationBadge(currentDayData.partner1.pm.workLocation)}
                 </div>
 
-                <p className="text-sm font-semibold text-stone-200 group-hover:text-amber-100 transition-colors">
-                  {currentDayData.partner1.pm.activity || 'Flexible / No plan set'}
+                <p className="text-xs font-medium text-stone-200 group-hover:text-amber-100 transition-colors">
+                  {currentDayData.partner1.pm.activity || '—'}
                 </p>
-
-                {currentDayData.partner1.pm.notes && (
-                  <p className="text-xs text-stone-400 mt-1 italic">
-                    "{currentDayData.partner1.pm.notes}"
-                  </p>
-                )}
               </div>
             </div>
 
-            {/* PARTNER 2 CARD */}
-            <div className={`bg-stone-900 border rounded-2xl p-4 sm:p-5 shadow-lg transition-all ${
-              activeUser === 'partner2' ? 'border-emerald-600/60 ring-1 ring-emerald-500/20' : 'border-stone-800'
+            {/* PARTNER 2 */}
+            <div className={`bg-[#181514] border rounded-2xl p-3.5 sm:p-4 transition-all ${
+              activeUser === 'partner2' ? 'border-emerald-600/40 ring-1 ring-emerald-500/10' : 'border-stone-800/80'
             }`}>
-              <div className="flex items-center justify-between pb-3 border-b border-stone-800">
-                <div className="flex items-center gap-2.5">
-                  <span className={`w-8 h-8 rounded-full ${p2.avatarBg} text-white font-bold flex items-center justify-center text-xs shadow-xs`}>
+              <div className="flex items-center justify-between pb-2 border-b border-stone-800/60">
+                <div className="flex items-center gap-2">
+                  <span className={`w-6 h-6 rounded-full ${p2.avatarBg} text-white font-bold flex items-center justify-center text-[10px]`}>
                     {p2.shortName.charAt(0)}
                   </span>
-                  <div>
-                    <h3 className="font-bold text-sm sm:text-base text-stone-100 flex items-center gap-1.5">
-                      <span>{p2.name}</span>
-                      {activeUser === 'partner2' && (
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded-full border border-emerald-500/40 font-medium">
-                          You
-                        </span>
-                      )}
-                    </h3>
-                    <p className="text-[11px] text-stone-400">Partner 2 Schedule</p>
-                  </div>
+                  <span className="font-bold text-xs sm:text-sm text-stone-200">
+                    {p2.name}
+                  </span>
+                  {activeUser === 'partner2' && (
+                    <span className="text-[9px] bg-emerald-500/15 text-emerald-300 px-1.5 py-0.2 rounded-full font-medium">
+                      You
+                    </span>
+                  )}
                 </div>
 
                 <button
@@ -416,11 +348,10 @@ export const WeeklyRoutineView: React.FC = () => {
                       block: currentDayData.partner2.am,
                     })
                   }
-                  className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-emerald-300 text-xs flex items-center gap-1 transition-colors"
+                  className="p-1 text-stone-400 hover:text-emerald-300"
                   title="Edit schedule"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-medium hidden sm:inline">Edit</span>
+                  <Edit2 className="w-3 h-3" />
                 </button>
               </div>
 
@@ -434,31 +365,25 @@ export const WeeklyRoutineView: React.FC = () => {
                     block: currentDayData.partner2.am,
                   })
                 }
-                className="mt-3.5 p-3.5 rounded-xl bg-stone-950/60 hover:bg-stone-950/90 border border-stone-800/80 hover:border-emerald-500/40 transition-all cursor-pointer group"
+                className="mt-2.5 p-2.5 rounded-xl bg-stone-950/50 hover:bg-stone-950/80 border border-stone-800/60 transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                    <Sun className="w-3.5 h-3.5 text-amber-400" /> AM Routine
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
+                    <Sun className="w-3 h-3 text-amber-400" /> AM
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     {getLocationBadge(currentDayData.partner2.am.workLocation)}
                     {currentDayData.partner2.am.wolfyDuty && (
-                      <span className="text-[10px] font-semibold bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                        <PawPrint className="w-3 h-3" /> Walk Duty
+                      <span className="text-[9px] text-amber-300 bg-amber-900/30 px-1 rounded-sm">
+                        🐾 Walk
                       </span>
                     )}
                   </div>
                 </div>
 
-                <p className="text-sm font-semibold text-stone-200 group-hover:text-emerald-100 transition-colors">
-                  {currentDayData.partner2.am.activity || 'Flexible / No plan set'}
+                <p className="text-xs font-medium text-stone-200 group-hover:text-emerald-100 transition-colors">
+                  {currentDayData.partner2.am.activity || '—'}
                 </p>
-
-                {currentDayData.partner2.am.notes && (
-                  <p className="text-xs text-stone-400 mt-1 italic">
-                    "{currentDayData.partner2.am.notes}"
-                  </p>
-                )}
               </div>
 
               {/* PM Block */}
@@ -471,131 +396,71 @@ export const WeeklyRoutineView: React.FC = () => {
                     block: currentDayData.partner2.pm,
                   })
                 }
-                className="mt-3 p-3.5 rounded-xl bg-stone-950/60 hover:bg-stone-950/90 border border-stone-800/80 hover:border-emerald-500/40 transition-all cursor-pointer group"
+                className="mt-2 p-2.5 rounded-xl bg-stone-950/50 hover:bg-stone-950/80 border border-stone-800/60 transition-all cursor-pointer group"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1">
-                    <Moon className="w-3.5 h-3.5 text-indigo-400" /> PM Routine
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-indigo-300 flex items-center gap-1">
+                    <Moon className="w-3 h-3 text-indigo-400" /> PM
                   </span>
-                  <div className="flex items-center gap-1.5">
-                    {getLocationBadge(currentDayData.partner2.pm.workLocation)}
-                    {currentDayData.partner2.pm.wolfyDuty && (
-                      <span className="text-[10px] font-semibold bg-amber-900/40 text-amber-300 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                        <PawPrint className="w-3 h-3" /> Walk Duty
-                      </span>
-                    )}
-                  </div>
+                  {getLocationBadge(currentDayData.partner2.pm.workLocation)}
                 </div>
 
-                <p className="text-sm font-semibold text-stone-200 group-hover:text-emerald-100 transition-colors">
-                  {currentDayData.partner2.pm.activity || 'Flexible / No plan set'}
+                <p className="text-xs font-medium text-stone-200 group-hover:text-emerald-100 transition-colors">
+                  {currentDayData.partner2.pm.activity || '—'}
                 </p>
-
-                {currentDayData.partner2.pm.notes && (
-                  <p className="text-xs text-stone-400 mt-1 italic">
-                    "{currentDayData.partner2.pm.notes}"
-                  </p>
-                )}
               </div>
             </div>
           </div>
 
-          {/* DAILY DINNER MEAL PLAN SNAPSHOT CARD */}
-          <div className="bg-gradient-to-br from-stone-900 via-amber-950/30 to-stone-900 border border-amber-900/40 rounded-2xl p-4 sm:p-5 shadow-lg">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-950/60 border border-amber-800/40 text-amber-400">
-                  <Utensils className="w-4 h-4" />
+          {/* Calm Dinner Snapshot */}
+          <div className="bg-[#181514] border border-stone-800/80 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="p-1.5 rounded-lg bg-amber-950/40 text-amber-400 shrink-0">
+                <Utensils className="w-3.5 h-3.5" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-stone-400 font-medium">Tonight:</span>
+                  <span className="text-xs font-semibold text-stone-200 truncate">
+                    {currentDayData.dinner.type === 'together'
+                      ? currentDayData.dinner.mealName || 'Dinner'
+                      : 'Own Dinners'}
+                  </span>
                 </div>
-                <div>
-                  <h3 className="font-bold text-base text-amber-200 font-serif">
-                    Tonight's Dinner Plan
-                  </h3>
-                  <p className="text-xs text-stone-400">
-                    {currentDayData.dinner.type === 'together' ? 'Eating Together' : 'Separate / Own Dinners'}
-                  </p>
-                </div>
+                {currentDayData.dinner.type === 'together' && (
+                  <span className="text-[10px] text-amber-400/90 font-medium">
+                    {getCookLabel(currentDayData.dinner.cook)}
+                  </span>
+                )}
               </div>
-
-              <button
-                onClick={() => setActiveTab('dinners')}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-xs font-semibold text-amber-300 transition-colors"
-              >
-                <span>Full Dinner Plan</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
             </div>
 
-            <div className="mt-3.5">
-              {currentDayData.dinner.type === 'together' ? (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-950/60 rounded-xl p-3.5 border border-stone-800">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-800/40">
-                        {getCookLabel(currentDayData.dinner.cook)}
-                      </span>
-                      {currentDayData.dinner.tags?.map((t) => (
-                        <span key={t} className="text-[10px] text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded-md">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-sm sm:text-base font-bold text-stone-100">
-                      {currentDayData.dinner.mealName}
-                    </p>
-                    {currentDayData.dinner.recipeNotes && (
-                      <p className="text-xs text-stone-400 mt-1 italic">
-                        {currentDayData.dinner.recipeNotes}
-                      </p>
-                    )}
-                  </div>
-
-                  {currentDayData.dinner.recipeId && (
-                    <button
-                      onClick={() => {
-                        const rec = recipes.find((r) => r.id === currentDayData.dinner.recipeId);
-                        if (rec) setSelectedRecipeModal(rec);
-                      }}
-                      className="px-3.5 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-600/40 text-xs font-bold transition-colors shrink-0 self-start sm:self-center"
-                    >
-                      📖 View Recipe & Ingredients
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800">
-                    <span className="text-[11px] font-bold text-amber-400 block mb-0.5">
-                      {p1.name}'s Dinner:
-                    </span>
-                    <p className="text-xs font-medium text-stone-200">
-                      {currentDayData.dinner.partner1OwnDinner || 'Solo meal / fend for self'}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800">
-                    <span className="text-[11px] font-bold text-emerald-400 block mb-0.5">
-                      {p2.name}'s Dinner:
-                    </span>
-                    <p className="text-xs font-medium text-stone-200">
-                      {currentDayData.dinner.partner2OwnDinner || 'Solo meal / fend for self'}
-                    </p>
-                  </div>
-                </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {currentDayData.dinner.recipeId && (
+                <button
+                  onClick={() => {
+                    const rec = recipes.find((r) => r.id === currentDayData.dinner.recipeId);
+                    if (rec) setSelectedRecipeModal(rec);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-[11px] text-amber-300 border border-stone-800 font-medium"
+                >
+                  Recipe
+                </button>
               )}
+              <button
+                onClick={() => setActiveTab('dinners')}
+                className="p-1 text-stone-400 hover:text-stone-200"
+                title="View Dinners"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
       ) : (
         /* ================= FULL WEEK MATRIX VIEW ================= */
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-lg text-amber-100 font-serif">
-              Week Overview: {p1.name} & {p2.name}
-            </h3>
-            <span className="text-xs text-stone-400">All 7 days at a glance</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+        <div className="space-y-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-2">
             {schedule.map((dayItem) => {
               const isSelected = dayItem.day === selectedDay;
               return (
@@ -605,56 +470,28 @@ export const WeeklyRoutineView: React.FC = () => {
                     setSelectedDay(dayItem.day);
                     setViewMode('day');
                   }}
-                  className={`bg-stone-900 border rounded-2xl p-3 shadow-md hover:border-amber-500/50 cursor-pointer transition-all flex flex-col justify-between ${
-                    isSelected ? 'border-amber-500/60 ring-1 ring-amber-500/20' : 'border-stone-800'
+                  className={`bg-[#181514] border rounded-xl p-2.5 hover:border-amber-500/40 cursor-pointer transition-all ${
+                    isSelected ? 'border-amber-500/50' : 'border-stone-800/80'
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-stone-800">
-                      <span className="font-bold text-xs text-amber-200 font-serif">
-                        {dayItem.shortLabel}
-                      </span>
-                      <span className="text-[10px] text-stone-400">{dayItem.dateStr}</span>
-                    </div>
+                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-800/50 text-xs">
+                    <span className="font-bold text-amber-200">{dayItem.shortLabel}</span>
+                    <span className="text-[10px] text-stone-500">{dayItem.dateStr}</span>
+                  </div>
 
-                    {/* Partner 1 mini block */}
-                    <div className="mt-2 text-[11px] space-y-1">
-                      <div className="flex items-center gap-1 font-semibold text-amber-300">
-                        <span className={`w-3.5 h-3.5 rounded-full ${p1.avatarBg} text-[8px] text-white flex items-center justify-center font-bold`}>
-                          {p1.shortName.charAt(0)}
-                        </span>
-                        <span>{p1.shortName}</span>
-                      </div>
-                      <p className="text-stone-300 text-[10px] truncate" title={dayItem.partner1.am.activity}>
-                        🌅 {dayItem.partner1.am.activity || 'Flexible'}
-                      </p>
-                      <p className="text-stone-400 text-[10px] truncate" title={dayItem.partner1.pm.activity}>
-                        🌙 {dayItem.partner1.pm.activity || 'Flexible'}
-                      </p>
+                  <div className="mt-2 space-y-1.5 text-[10px]">
+                    <div>
+                      <span className="text-amber-400/80 font-bold">{p1.shortName}:</span>
+                      <p className="text-stone-300 truncate">{dayItem.partner1.am.activity || '—'}</p>
                     </div>
-
-                    {/* Partner 2 mini block */}
-                    <div className="mt-2 pt-2 border-t border-stone-800/60 text-[11px] space-y-1">
-                      <div className="flex items-center gap-1 font-semibold text-emerald-300">
-                        <span className={`w-3.5 h-3.5 rounded-full ${p2.avatarBg} text-[8px] text-white flex items-center justify-center font-bold`}>
-                          {p2.shortName.charAt(0)}
-                        </span>
-                        <span>{p2.shortName}</span>
-                      </div>
-                      <p className="text-stone-300 text-[10px] truncate" title={dayItem.partner2.am.activity}>
-                        🌅 {dayItem.partner2.am.activity || 'Flexible'}
-                      </p>
-                      <p className="text-stone-400 text-[10px] truncate" title={dayItem.partner2.pm.activity}>
-                        🌙 {dayItem.partner2.pm.activity || 'Flexible'}
-                      </p>
+                    <div>
+                      <span className="text-emerald-400/80 font-bold">{p2.shortName}:</span>
+                      <p className="text-stone-300 truncate">{dayItem.partner2.am.activity || '—'}</p>
                     </div>
                   </div>
 
-                  {/* Dinner mini tag */}
-                  <div className="mt-2.5 pt-2 border-t border-amber-950/60 text-[10px] text-stone-300">
-                    <span className="font-bold text-amber-400 block truncate">
-                      🍽️ {dayItem.dinner.type === 'together' ? dayItem.dinner.mealName : 'Separate Dinners'}
-                    </span>
+                  <div className="mt-2 pt-1 border-t border-stone-800/40 text-[9px] text-stone-400 truncate">
+                    🍽️ {dayItem.dinner.type === 'together' ? dayItem.dinner.mealName : 'Own dinners'}
                   </div>
                 </div>
               );

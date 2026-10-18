@@ -15,6 +15,7 @@ import {
   INITIAL_RECIPES,
   INITIAL_SETTINGS,
   INITIAL_NOTIFICATIONS,
+  BLANK_SCHEDULE_TEMPLATE,
 } from '../data/initialData';
 import { playChime } from '../utils/sound';
 import { User } from 'firebase/auth';
@@ -77,6 +78,12 @@ interface WolfyContextType {
   updateWeekendVibes: (day: DayOfWeek, update: Partial<WeekendVibesPlan>) => void;
   saveFullDayRoutine: (day: DayOfWeek, p1Am: ScheduleBlock, p1Pm: ScheduleBlock, p2Am: ScheduleBlock, p2Pm: ScheduleBlock, dinner: DinnerPlan) => void;
   
+  hasCompletedFirstWeek: boolean;
+  previousWeekSchedule: DaySchedule[] | null;
+  populateFromPreviousWeek: () => void;
+  startFromScratch: () => void;
+  archiveCurrentWeekAsPrevious: () => void;
+
   addRecipe: (recipe: Recipe) => void;
   updateRecipe: (id: string, update: Partial<Recipe>) => void;
   deleteRecipe: (id: string) => void;
@@ -100,6 +107,8 @@ const STORAGE_KEY_RECIPES = 'wolfy_recipes_v2';
 const STORAGE_KEY_SETTINGS = 'wolfy_settings_v2';
 const STORAGE_KEY_NOTIFS = 'wolfy_notifications_v2';
 const STORAGE_KEY_ACTIVE_USER = 'wolfy_active_user_v2';
+const STORAGE_KEY_PREV_WEEK = 'wolfy_prev_week_v2';
+const STORAGE_KEY_HAS_COMPLETED = 'wolfy_has_completed_week_v2';
 
 export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Check URL query parameters for pair code or active user
@@ -125,6 +134,26 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // fallback
     }
     return INITIAL_SCHEDULE;
+  });
+
+  const [previousWeekSchedule, setPreviousWeekSchedule] = useState<DaySchedule[] | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PREV_WEEK);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+    return INITIAL_SCHEDULE;
+  });
+
+  const [hasCompletedFirstWeek, setHasCompletedFirstWeek] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_HAS_COMPLETED);
+      if (saved !== null) return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+    return true; // allows 2nd run copy prompt
   });
 
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
@@ -584,6 +613,74 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [activeUser, settings, addNotification]);
 
+  const populateFromPreviousWeek = useCallback(() => {
+    const sourceSchedule = (previousWeekSchedule && previousWeekSchedule.length > 0)
+      ? previousWeekSchedule
+      : INITIAL_SCHEDULE;
+
+    setSchedule((current) => {
+      const next = current.map((dayItem, idx) => {
+        const prevDay = sourceSchedule[idx] || sourceSchedule.find((p) => p.day === dayItem.day);
+        if (!prevDay) return dayItem;
+        const updated = {
+          ...dayItem,
+          partner1: {
+            am: { ...prevDay.partner1.am },
+            pm: { ...prevDay.partner1.pm },
+          },
+          partner2: {
+            am: { ...prevDay.partner2.am },
+            pm: { ...prevDay.partner2.pm },
+          },
+          weekendVibes: prevDay.weekendVibes ? { ...prevDay.weekendVibes } : dayItem.weekendVibes,
+        };
+        saveScheduleDoc(settings.pairCode, updated);
+        return updated;
+      });
+      return next;
+    });
+    playChime('success');
+  }, [previousWeekSchedule, settings.pairCode]);
+
+  const startFromScratch = useCallback(() => {
+    setSchedule((current) => {
+      const next = current.map((dayItem) => {
+        const blank = {
+          ...dayItem,
+          partner1: {
+            am: { activity: '', workLocation: 'wfh' as const, wolfyDuty: false },
+            pm: { activity: '', workLocation: 'wfh' as const, wolfyDuty: false },
+          },
+          partner2: {
+            am: { activity: '', workLocation: 'office' as const, wolfyDuty: false },
+            pm: { activity: '', workLocation: 'wfh' as const, wolfyDuty: false },
+          },
+          dinner: {
+            type: 'together' as const,
+            cook: 'partner1' as const,
+            mealName: '',
+            tags: [],
+          },
+        };
+        saveScheduleDoc(settings.pairCode, blank);
+        return blank;
+      });
+      return next;
+    });
+    playChime('success');
+  }, [settings.pairCode]);
+
+  const archiveCurrentWeekAsPrevious = useCallback(() => {
+    setPreviousWeekSchedule(schedule);
+    setHasCompletedFirstWeek(true);
+    try {
+      localStorage.setItem(STORAGE_KEY_PREV_WEEK, JSON.stringify(schedule));
+      localStorage.setItem(STORAGE_KEY_HAS_COMPLETED, JSON.stringify(true));
+    } catch {
+      // fallback
+    }
+  }, [schedule]);
+
   const addRecipe = useCallback((recipe: Recipe) => {
     setRecipes((prev) => [recipe, ...prev]);
     saveRecipeDoc(settings.pairCode, recipe);
@@ -773,6 +870,11 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateDinnerPlan,
         updateWeekendVibes,
         saveFullDayRoutine,
+        hasCompletedFirstWeek,
+        previousWeekSchedule,
+        populateFromPreviousWeek,
+        startFromScratch,
+        archiveCurrentWeekAsPrevious,
         addRecipe,
         updateRecipe,
         deleteRecipe,

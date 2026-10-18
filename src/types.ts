@@ -111,4 +111,6 @@ export interface AppSettings {
   pairCode: string;
   googleCalendarConnected?: boolean;
   cloudSyncEnabled?: boolean;
+  hasCompletedFirstWeek?: boolean;
+  previousWeekSchedule?: DaySchedule[];
 }
