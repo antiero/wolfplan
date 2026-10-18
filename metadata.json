@@ -1,0 +1,6 @@
+{
+  "name": "Wolfy - Couple's Routine & Meal Planner",
+  "description": "Shared weekly routine, Sunday check-in, and dinner meal planner for partners, inspired by Wolfy the Jack Russell Poodle.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
