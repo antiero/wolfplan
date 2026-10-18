@@ -105,8 +105,8 @@ export const INITIAL_SETTINGS: AppSettings = {
   },
   partner2: {
     id: 'partner2',
-    name: 'Alex',
-    shortName: 'Alex',
+    name: 'Beth',
+    shortName: 'Beth',
     avatarBg: 'bg-emerald-600',
     accentColor: '#059669',
     favoriteDinnerEmoji: '🍣',

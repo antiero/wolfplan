@@ -30,6 +30,8 @@ import {
   deleteRecipeDoc,
   subscribeToRecipes,
   savePairingDoc,
+  fetchPairingOnce,
+  subscribeToPairing,
   testFirestoreConnection,
   setAccessToken,
 } from '../services/firebase';
@@ -54,6 +56,7 @@ interface WolfyContextType {
   isSundayWizardOpen: boolean;
   isInviteModalOpen: boolean;
   isCalendarModalOpen: boolean;
+  isProfileModalOpen: boolean;
   selectedRecipeModal: Recipe | null;
   unreadCount: number;
 
@@ -69,6 +72,7 @@ interface WolfyContextType {
   setIsSundayWizardOpen: (open: boolean) => void;
   setIsInviteModalOpen: (open: boolean) => void;
   setIsCalendarModalOpen: (open: boolean) => void;
+  setIsProfileModalOpen: (open: boolean) => void;
   setSelectedRecipeModal: (recipe: Recipe | null) => void;
 
   loginWithGoogle: () => Promise<void>;
@@ -170,11 +174,23 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [settings, setSettings] = useState<AppSettings>(() => {
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const pairParam = params?.get('pair');
+    const nameParam = params?.get('name') || params?.get('p2Name');
+    const p1NameParam = params?.get('p1Name');
+    const userParam = params?.get('user');
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (pairParam) parsed.pairCode = pairParam;
+        if (nameParam && (parsed.partner2.name === 'Partner' || parsed.partner2.name === 'Partner 2' || parsed.partner2.name === 'Alex' || userParam === 'partner2')) {
+          parsed.partner2.name = nameParam;
+          parsed.partner2.shortName = nameParam.slice(0, 4);
+        }
+        if (p1NameParam && (parsed.partner1.name === 'Partner' || parsed.partner1.name === 'Partner 1')) {
+          parsed.partner1.name = p1NameParam;
+          parsed.partner1.shortName = p1NameParam.slice(0, 4);
+        }
         return parsed;
       }
     } catch {
@@ -182,6 +198,20 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     const initial = { ...INITIAL_SETTINGS };
     if (pairParam) initial.pairCode = pairParam;
+    if (nameParam) {
+      initial.partner2 = {
+        ...initial.partner2,
+        name: nameParam,
+        shortName: nameParam.slice(0, 4),
+      };
+    }
+    if (p1NameParam) {
+      initial.partner1 = {
+        ...initial.partner1,
+        name: p1NameParam,
+        shortName: p1NameParam.slice(0, 4),
+      };
+    }
     return initial;
   });
 
@@ -204,6 +234,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isSundayWizardOpen, setIsSundayWizardOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
 
   // Auth & Cloud sync states
@@ -256,9 +287,21 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
+    const unsubPairing = subscribeToPairing(settings.pairCode, (remotePairing) => {
+      if (remotePairing) {
+        setSettings((prev) => ({
+          ...prev,
+          ...remotePairing,
+          partner1: { ...prev.partner1, ...(remotePairing.partner1 || {}) },
+          partner2: { ...prev.partner2, ...(remotePairing.partner2 || {}) },
+        }));
+      }
+    });
+
     return () => {
       unsubSchedule();
       unsubRecipes();
+      unsubPairing();
     };
   }, [authUser, settings.pairCode]);
 
@@ -279,17 +322,37 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
         playChime('success');
 
-        // Check if the couple already has an existing cloud schedule in Firestore
+        // Sync shared couple schedule from Firestore
         const existingRemoteSchedule = await fetchScheduleOnce(settings.pairCode);
         if (existingRemoteSchedule && existingRemoteSchedule.length > 0) {
-          // Adopt the shared couple schedule
           setSchedule(existingRemoteSchedule);
         } else {
-          // First time initialization: write initial schedule & recipes to Firestore
           schedule.forEach((d) => saveScheduleDoc(settings.pairCode, d));
           recipes.forEach((r) => saveRecipeDoc(settings.pairCode, r));
+        }
+
+        // Sync pairing settings & partner names from Firestore
+        const remotePairing = await fetchPairingOnce(settings.pairCode);
+        if (remotePairing) {
+          setSettings((prev) => {
+            const next = {
+              ...prev,
+              ...remotePairing,
+              partner1: { ...prev.partner1, ...(remotePairing.partner1 || {}) },
+              partner2: { ...prev.partner2, ...(remotePairing.partner2 || {}) },
+            };
+            const activeProfile = next[activeUser];
+            // Auto-populate Google profile photo if not yet set
+            if (!activeProfile.photoUrl && result.user.photoURL) {
+              activeProfile.photoUrl = result.user.photoURL;
+            }
+            return next;
+          });
+        } else {
+          // If first user, persist initial pairing doc with partner names
           savePairingDoc(settings.pairCode, settings);
         }
+
         setLastCloudSync(new Date());
       }
     } catch (error) {
@@ -857,6 +920,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isSundayWizardOpen,
         isInviteModalOpen,
         isCalendarModalOpen,
+        isProfileModalOpen,
         selectedRecipeModal,
         unreadCount,
 
@@ -871,6 +935,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsSundayWizardOpen,
         setIsInviteModalOpen,
         setIsCalendarModalOpen,
+        setIsProfileModalOpen,
         setSelectedRecipeModal,
 
         loginWithGoogle,

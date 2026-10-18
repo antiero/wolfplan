@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWolfy } from '../context/WolfyContext';
-import { LogOut, CheckCircle2, Calendar, Cloud, RefreshCw } from 'lucide-react';
+import { LogOut, CheckCircle2, Calendar, Cloud, RefreshCw, User } from 'lucide-react';
 
 export const GoogleAuthButton: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const {
@@ -11,6 +11,7 @@ export const GoogleAuthButton: React.FC<{ compact?: boolean }> = ({ compact = fa
     isCloudSyncing,
     lastCloudSync,
     setIsCalendarModalOpen,
+    setIsProfileModalOpen,
   } = useWolfy();
 
   if (!authUser) {
@@ -97,7 +98,15 @@ export const GoogleAuthButton: React.FC<{ compact?: boolean }> = ({ compact = fa
         </div>
       </div>
 
-      <div className="flex items-center gap-2 self-end sm:self-auto">
+      <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+        <button
+          onClick={() => setIsProfileModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs border border-stone-700 shadow-xs transition-colors"
+        >
+          <User className="w-3.5 h-3.5 text-amber-400" />
+          <span>Edit Profile</span>
+        </button>
+
         <button
           onClick={() => setIsCalendarModalOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-xs transition-colors"

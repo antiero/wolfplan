@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWolfy } from '../context/WolfyContext';
 import { WolfyAvatar } from './WolfyAvatar';
+import { UserAvatar } from './UserAvatar';
 import { GoogleAuthButton } from './GoogleAuthButton';
 import {
   Bell,
@@ -12,6 +13,8 @@ import {
   ChevronDown,
   Volume2,
   Calendar,
+  User,
+  Edit2,
 } from 'lucide-react';
 import { PartnerId } from '../types';
 
@@ -26,6 +29,7 @@ export const Header: React.FC = () => {
     setIsSundayWizardOpen,
     setIsInviteModalOpen,
     setIsCalendarModalOpen,
+    setIsProfileModalOpen,
     simulatePartnerUpdate,
     authUser,
   } = useWolfy();
@@ -145,22 +149,52 @@ export const Header: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-stone-800/90 hover:bg-stone-700/90 border border-stone-700 text-xs font-semibold text-stone-200 transition-colors"
+              className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-stone-800/90 hover:bg-stone-700/90 border border-stone-700 text-xs font-semibold text-stone-200 transition-colors cursor-pointer"
+              title="Switch user or edit profile"
             >
-              <span className={`w-5 h-5 rounded-full ${currentUser.avatarBg} text-white flex items-center justify-center text-[10px] font-bold shadow-xs`}>
-                {currentUser.shortName.charAt(0)}
-              </span>
+              <UserAvatar profile={currentUser} size="xs" />
               <span className="max-w-[70px] sm:max-w-[100px] truncate">{currentUser.name}</span>
               <ChevronDown className="w-3 h-3 text-stone-400" />
             </button>
 
             {isUserMenuOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-stone-900 border border-stone-700 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-2 border-b border-stone-800 text-left">
-                  <p className="text-[11px] font-medium text-stone-400 uppercase tracking-wider">Active Device Profile</p>
-                  <p className="text-xs text-stone-300">Switch who is editing this schedule:</p>
+              <div className="absolute right-0 mt-2 w-60 bg-stone-900 border border-stone-700 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-2 border-b border-stone-800 text-left flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Device Profile</p>
+                    <p className="text-xs font-bold text-amber-200">{currentUser.name}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setIsProfileModalOpen(true);
+                    }}
+                    className="p-1 rounded-lg hover:bg-stone-800 text-amber-400 hover:text-amber-300"
+                    title="Edit profile & photo"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div className="py-1 space-y-1">
+
+                {/* Profile Quick Edit Button */}
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      setIsProfileModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-stone-100 hover:bg-amber-950/40 hover:text-amber-300 rounded-xl transition-colors text-left"
+                  >
+                    <User className="w-4 h-4 text-amber-400" />
+                    <div className="flex-1 min-w-0">
+                      <span>Edit My Profile & Photo</span>
+                      <p className="text-[10px] text-stone-400 font-normal">Change name, photo, or avatar</p>
+                    </div>
+                  </button>
+                </div>
+
+                <div className="py-1 border-t border-stone-800 space-y-1">
+                  <p className="px-3 pt-1 text-[10px] text-stone-400 uppercase tracking-wider font-semibold">Switch Active Partner:</p>
                   <button
                     onClick={() => handleSwitchUser('partner1')}
                     className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl font-medium transition-colors ${
@@ -168,9 +202,7 @@ export const Header: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className={`w-5 h-5 rounded-full ${settings.partner1.avatarBg} text-white flex items-center justify-center text-[10px]`}>
-                        {settings.partner1.shortName.charAt(0)}
-                      </span>
+                      <UserAvatar profile={settings.partner1} size="xs" />
                       <span>{settings.partner1.name} (Partner 1)</span>
                     </div>
                     {activeUser === 'partner1' && <Check className="w-4 h-4 text-amber-400" />}
@@ -183,14 +215,13 @@ export const Header: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className={`w-5 h-5 rounded-full ${settings.partner2.avatarBg} text-white flex items-center justify-center text-[10px]`}>
-                        {settings.partner2.shortName.charAt(0)}
-                      </span>
+                      <UserAvatar profile={settings.partner2} size="xs" />
                       <span>{settings.partner2.name} (Partner 2)</span>
                     </div>
                     {activeUser === 'partner2' && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                 </div>
+
                 <div className="pt-1.5 border-t border-stone-800">
                   <button
                     onClick={() => {
@@ -200,7 +231,7 @@ export const Header: React.FC = () => {
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-950/40 rounded-xl transition-colors font-medium"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span>Invite / Pair Device</span>
+                    <span>Invite / Pair Partner</span>
                   </button>
                 </div>
               </div>

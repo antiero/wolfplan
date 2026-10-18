@@ -5,6 +5,7 @@ import { SundayPromptBanner } from './SundayPromptBanner';
 import { EditBlockModal } from './EditBlockModal';
 import { WolfyAvatar } from './WolfyAvatar';
 import { GoogleAuthButton } from './GoogleAuthButton';
+import { UserAvatar } from './UserAvatar';
 import {
   DayOfWeek,
   PartnerId,
@@ -258,9 +259,7 @@ export const WeeklyRoutineView: React.FC = () => {
             }`}>
               <div className="flex items-center justify-between pb-2 border-b border-stone-800/60">
                 <div className="flex items-center gap-2">
-                  <span className={`w-6 h-6 rounded-full ${p1.avatarBg} text-white font-bold flex items-center justify-center text-[10px]`}>
-                    {p1.shortName.charAt(0)}
-                  </span>
+                  <UserAvatar profile={p1} size="sm" />
                   <span className="font-bold text-xs sm:text-sm text-stone-200">
                     {p1.name}
                   </span>
@@ -349,9 +348,7 @@ export const WeeklyRoutineView: React.FC = () => {
             }`}>
               <div className="flex items-center justify-between pb-2 border-b border-stone-800/60">
                 <div className="flex items-center gap-2">
-                  <span className={`w-6 h-6 rounded-full ${p2.avatarBg} text-white font-bold flex items-center justify-center text-[10px]`}>
-                    {p2.shortName.charAt(0)}
-                  </span>
+                  <UserAvatar profile={p2} size="sm" />
                   <span className="font-bold text-xs sm:text-sm text-stone-200">
                     {p2.name}
                   </span>

@@ -273,3 +273,42 @@ export async function savePairingDoc(pairCode: string, settings: Partial<AppSett
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
+
+// Fetch Pairing Settings Once from Firestore
+export async function fetchPairingOnce(pairCode: string): Promise<Partial<AppSettings> | null> {
+  if (!auth.currentUser) return null;
+  const path = `pairings/${pairCode}`;
+  try {
+    const snap = await getDoc(doc(db, 'pairings', pairCode));
+    if (snap.exists()) {
+      return snap.data() as Partial<AppSettings>;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
+}
+
+// Real-time listener for pairing settings & partner profiles
+export function subscribeToPairing(
+  pairCode: string,
+  onUpdate: (pairingData: Partial<AppSettings>) => void,
+  onError?: (error: Error) => void
+) {
+  if (!auth.currentUser) return () => {};
+  const docRef = doc(db, 'pairings', pairCode);
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        onUpdate(snap.data() as Partial<AppSettings>);
+      }
+    },
+    (error) => {
+      if (onError) onError(error);
+      handleFirestoreError(error, OperationType.GET, `pairings/${pairCode}`);
+    }
+  );
+}
+

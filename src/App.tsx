@@ -9,6 +9,7 @@ import { NotificationsView } from './components/NotificationsView';
 import { SundayWizardModal } from './components/SundayWizardModal';
 import { RecipeModal } from './components/RecipeModal';
 import { InvitePartnerModal } from './components/InvitePartnerModal';
+import { UserProfileModal } from './components/UserProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { GoogleCalendarSyncModal } from './components/GoogleCalendarSyncModal';
 import { BottomNav } from './components/BottomNav';
@@ -83,6 +84,7 @@ const MainAppContent: React.FC = () => {
       <SundayWizardModal />
       <RecipeModal />
       <InvitePartnerModal />
+      <UserProfileModal />
       <GoogleCalendarSyncModal />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>

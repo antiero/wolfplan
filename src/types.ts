@@ -7,6 +7,8 @@ export interface PartnerProfile {
   avatarBg: string; // Tailwind color class or hex
   accentColor: string;
   favoriteDinnerEmoji: string;
+  photoUrl?: string; // Optional profile photo URL or base64 data URI
+  avatarEmoji?: string; // Optional custom emoji avatar
 }
 
 export type WorkLocation = 'wfh' | 'office' | 'travel' | 'off';

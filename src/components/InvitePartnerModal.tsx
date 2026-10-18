@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWolfy } from '../context/WolfyContext';
 import { WolfyAvatar } from './WolfyAvatar';
+import { UserAvatar } from './UserAvatar';
 import {
   X,
   Copy,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   Edit2,
   Save,
+  UserCheck,
 } from 'lucide-react';
 import { playChime } from '../utils/sound';
 
@@ -18,6 +20,7 @@ export const InvitePartnerModal: React.FC = () => {
   const {
     isInviteModalOpen,
     setIsInviteModalOpen,
+    setIsProfileModalOpen,
     settings,
     updateSettings,
     activeUser,
@@ -30,14 +33,18 @@ export const InvitePartnerModal: React.FC = () => {
 
   if (!isInviteModalOpen) return null;
 
-  const inviteUrl = `${window.location.origin}${window.location.pathname}?pair=${settings.pairCode}&user=partner2`;
+  // Recipient is the other partner
+  const recipientRole = activeUser === 'partner1' ? 'partner2' : 'partner1';
+  const recipientName = recipientRole === 'partner2' ? settings.partner2.name : settings.partner1.name;
+
+  const inviteUrl = `${window.location.origin}${window.location.pathname}?pair=${settings.pairCode}&user=${recipientRole}&name=${encodeURIComponent(recipientName)}&p2Name=${encodeURIComponent(settings.partner2.name)}&p1Name=${encodeURIComponent(settings.partner1.name)}`;
 
   const handleShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: "Wolfy - Couple's Routine Planner",
-          text: `Join our weekly routine, dinner & dog walk planner on Wolfy!`,
+          text: `Hey ${recipientName}! Join our weekly routine, dinner & dog walk planner on Wolfy!`,
           url: inviteUrl,
         });
         return;
@@ -60,9 +67,11 @@ export const InvitePartnerModal: React.FC = () => {
   };
 
   const handleSaveNames = () => {
+    const p1 = partner1Name.trim() || 'Partner 1';
+    const p2 = partner2Name.trim() || 'Partner 2';
     updateSettings({
-      partner1: { ...settings.partner1, name: partner1Name.trim() || 'Partner 1' },
-      partner2: { ...settings.partner2, name: partner2Name.trim() || 'Partner 2' },
+      partner1: { ...settings.partner1, name: p1, shortName: p1.slice(0, 4) },
+      partner2: { ...settings.partner2, name: p2, shortName: p2.slice(0, 4) },
     });
     setIsEditingNames(false);
     playChime('success');
@@ -175,37 +184,60 @@ export const InvitePartnerModal: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-stone-900 border border-stone-800">
-                <span className="text-[10px] text-stone-400 font-medium block mb-1">
-                  Partner 1:
-                </span>
-                {isEditingNames ? (
-                  <input
-                    type="text"
-                    value={partner1Name}
-                    onChange={(e) => setPartner1Name(e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
-                  />
-                ) : (
-                  <p className="text-sm font-bold text-amber-200">{settings.partner1.name}</p>
-                )}
+              <div className="p-3 rounded-xl bg-stone-900 border border-stone-800 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserAvatar profile={settings.partner1} size="sm" />
+                    <span className="text-[10px] text-stone-400 font-medium">
+                      Partner 1:
+                    </span>
+                  </div>
+                  {isEditingNames ? (
+                    <input
+                      type="text"
+                      value={partner1Name}
+                      onChange={(e) => setPartner1Name(e.target.value)}
+                      className="w-full px-2 py-1 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
+                    />
+                  ) : (
+                    <p className="text-sm font-bold text-amber-200">{settings.partner1.name}</p>
+                  )}
+                </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-stone-900 border border-stone-800">
-                <span className="text-[10px] text-stone-400 font-medium block mb-1">
-                  Partner 2:
-                </span>
-                {isEditingNames ? (
-                  <input
-                    type="text"
-                    value={partner2Name}
-                    onChange={(e) => setPartner2Name(e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
-                  />
-                ) : (
-                  <p className="text-sm font-bold text-emerald-200">{settings.partner2.name}</p>
-                )}
+              <div className="p-3 rounded-xl bg-stone-900 border border-stone-800 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserAvatar profile={settings.partner2} size="sm" />
+                    <span className="text-[10px] text-stone-400 font-medium">
+                      Partner 2:
+                    </span>
+                  </div>
+                  {isEditingNames ? (
+                    <input
+                      type="text"
+                      value={partner2Name}
+                      onChange={(e) => setPartner2Name(e.target.value)}
+                      className="w-full px-2 py-1 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
+                    />
+                  ) : (
+                    <p className="text-sm font-bold text-emerald-200">{settings.partner2.name}</p>
+                  )}
+                </div>
               </div>
+            </div>
+
+            <div className="pt-1 flex items-center justify-between text-xs">
+              <button
+                onClick={() => {
+                  setIsInviteModalOpen(false);
+                  setIsProfileModalOpen(true);
+                }}
+                className="text-amber-400 hover:text-amber-300 flex items-center gap-1.5 font-medium hover:underline"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Custom Profile Photos & Avatars</span>
+              </button>
             </div>
           </div>
 

@@ -13,8 +13,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { playChime } from '../utils/sound';
-
 import { GoogleAuthButton } from './GoogleAuthButton';
+import { UserAvatar } from './UserAvatar';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { settings, updateSettings, resetToDefaults } = useWolfy();
+  const { settings, updateSettings, resetToDefaults, setIsProfileModalOpen } = useWolfy();
 
   const [reminderTime, setReminderTime] = useState(settings.sundayReminderTime || '21:30');
   const [reminderDay, setReminderDay] = useState(settings.sundayReminderDay || 'sunday');
@@ -34,13 +34,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   const handleSave = () => {
+    const trimmed1 = p1Name.trim() || 'Partner 1';
+    const trimmed2 = p2Name.trim() || 'Partner 2';
     updateSettings({
       sundayReminderTime: reminderTime,
       sundayReminderDay: reminderDay,
       sundayReminderEnabled: reminderEnabled,
       realtimeAlerts,
-      partner1: { ...settings.partner1, name: p1Name.trim() || 'Partner 1' },
-      partner2: { ...settings.partner2, name: p2Name.trim() || 'Partner 2' },
+      partner1: { ...settings.partner1, name: trimmed1, shortName: trimmed1.slice(0, 4) },
+      partner2: { ...settings.partner2, name: trimmed2, shortName: trimmed2.slice(0, 4) },
     });
     playChime('success');
     onClose();
@@ -149,29 +151,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </p>
           </div>
 
-          {/* Partner Names */}
+          {/* Partner Names & Profiles */}
           <div className="p-4 rounded-2xl bg-stone-950/60 border border-stone-800 space-y-3">
-            <span className="font-bold text-stone-200 flex items-center gap-1.5">
-              <Heart className="w-4 h-4 text-rose-400" />
-              Partner Names
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-stone-200 flex items-center gap-1.5">
+                <Heart className="w-4 h-4 text-rose-400" />
+                Couple Profiles
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  setIsProfileModalOpen(true);
+                }}
+                className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 hover:underline"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Photos & Avatars</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] text-stone-400 block mb-1">Partner 1</label>
+              <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <UserAvatar profile={settings.partner1} size="xs" />
+                  <label className="text-[11px] text-stone-300 font-medium">Partner 1</label>
+                </div>
                 <input
                   type="text"
                   value={p1Name}
                   onChange={(e) => setP1Name(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-100"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
                 />
               </div>
-              <div>
-                <label className="text-[11px] text-stone-400 block mb-1">Partner 2</label>
+
+              <div className="p-2.5 rounded-xl bg-stone-900 border border-stone-800 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <UserAvatar profile={settings.partner2} size="xs" />
+                  <label className="text-[11px] text-stone-300 font-medium">Partner 2</label>
+                </div>
                 <input
                   type="text"
                   value={p2Name}
                   onChange={(e) => setP2Name(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-100"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
                 />
               </div>
             </div>
