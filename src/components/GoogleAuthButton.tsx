@@ -17,7 +17,11 @@ export const GoogleAuthButton: React.FC<{ compact?: boolean }> = ({ compact = fa
     return (
       <button
         onClick={loginWithGoogle}
-        className="gsi-material-button inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs font-semibold shadow-md transition-all border border-stone-200 cursor-pointer active:scale-95"
+        className={
+          compact
+            ? "gsi-material-button inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs font-semibold shadow-xs transition-all border border-stone-200 cursor-pointer active:scale-95 shrink-0"
+            : "gsi-material-button inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs font-semibold shadow-md transition-all border border-stone-200 cursor-pointer active:scale-95"
+        }
         title="Sign in with Google to enable Google Calendar & Cloud Storage"
       >
         <div className="w-4 h-4 shrink-0">
@@ -28,7 +32,14 @@ export const GoogleAuthButton: React.FC<{ compact?: boolean }> = ({ compact = fa
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
           </svg>
         </div>
-        <span>Sign in with Google</span>
+        {compact ? (
+          <>
+            <span className="hidden sm:inline">Sign in with Google</span>
+            <span className="sm:hidden text-[11px] font-medium">Google Sign-in</span>
+          </>
+        ) : (
+          <span>Sign in with Google</span>
+        )}
       </button>
     );
   }

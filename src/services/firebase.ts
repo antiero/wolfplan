@@ -12,6 +12,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocs,
   collection,
   onSnapshot,
   query,
@@ -182,6 +183,25 @@ export function subscribeToWeeklySchedule(
       if (onError) onError(error);
     }
   );
+}
+
+// Fetch schedule one-time to safely seed without overwriting existing couple data
+export async function fetchScheduleOnce(pairCode: string): Promise<DaySchedule[] | null> {
+  if (!auth.currentUser) return null;
+  const q = query(collection(db, 'schedules'), where('pairCode', '==', pairCode));
+  try {
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      const docs = snapshot.docs.map((d) => d.data() as DaySchedule);
+      const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      docs.sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day));
+      return docs;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'schedules');
+    return null;
+  }
 }
 
 // Save Recipe to Firestore

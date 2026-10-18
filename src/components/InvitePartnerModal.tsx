@@ -32,6 +32,22 @@ export const InvitePartnerModal: React.FC = () => {
 
   const inviteUrl = `${window.location.origin}${window.location.pathname}?pair=${settings.pairCode}&user=partner2`;
 
+  const handleShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: "Wolfy - Couple's Routine Planner",
+          text: `Join our weekly routine, dinner & dog walk planner on Wolfy!`,
+          url: inviteUrl,
+        });
+        return;
+      } catch {
+        // user dismissed or share failed, fallback to copy
+      }
+    }
+    handleCopyLink();
+  };
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(inviteUrl);
@@ -78,7 +94,7 @@ export const InvitePartnerModal: React.FC = () => {
         </div>
 
         {/* Body */}
-        <div className="p-5 space-y-5">
+        <div className="p-5 space-y-4">
           
           {/* Pair Code & Share Link Box */}
           <div className="bg-stone-950 border border-amber-600/40 rounded-2xl p-4 space-y-3">
@@ -96,20 +112,40 @@ export const InvitePartnerModal: React.FC = () => {
                 type="text"
                 readOnly
                 value={inviteUrl}
-                className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-300 font-mono focus:outline-hidden"
+                className="w-full px-3 py-2 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-300 font-mono focus:outline-hidden select-all"
               />
               <button
-                onClick={handleCopyLink}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shrink-0 shadow-md transition-colors"
+                onClick={handleShare}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shrink-0 shadow-md transition-colors"
+                title="Share or copy invite link"
               >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+                {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                <span>{copied ? 'Copied!' : 'Share / Copy'}</span>
               </button>
             </div>
 
             <p className="text-[11px] text-stone-400 leading-relaxed">
-              Send this link to your partner via WhatsApp, iMessage, or email. When they open it, their phone will automatically pair with your routine!
+              Send this link to your partner (via WhatsApp, iMessage, SMS or email). Opening it pairs her phone directly to your shared Wolfy plan.
             </p>
+          </div>
+
+          {/* Quick Steps on Google Auth for Couples */}
+          <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-3.5 space-y-2 text-xs">
+            <p className="font-bold text-amber-200 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              How Couple Sync & Google Auth Works:
+            </p>
+            <ol className="space-y-1.5 text-stone-300 text-[11px] list-decimal list-inside leading-relaxed">
+              <li>
+                <strong className="text-stone-100">You sign in:</strong> Tap <em>Sign in with Google</em> on your device to connect your Google account and activate cloud storage.
+              </li>
+              <li>
+                <strong className="text-stone-100">She opens the link:</strong> On her phone, she taps your invite link. Her device automatically loads as Partner 2.
+              </li>
+              <li>
+                <strong className="text-stone-100">She signs in:</strong> She taps <em>Sign in with Google</em> with her own Google account. Her device will sync with yours in real time!
+              </li>
+            </ol>
           </div>
 
           {/* Partner Names Editor */}

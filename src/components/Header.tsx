@@ -75,7 +75,7 @@ export const Header: React.FC = () => {
           </button>
 
           {/* Simulate Partner Live Demo Menu */}
-          <div className="relative">
+          <div className="relative hidden sm:block">
             <button
               onClick={() => setIsSimulateOpen(!isSimulateOpen)}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 transition-colors"

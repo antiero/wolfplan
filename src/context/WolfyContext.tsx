@@ -24,6 +24,7 @@ import {
   googleSignIn,
   logout,
   saveScheduleDoc,
+  fetchScheduleOnce,
   subscribeToWeeklySchedule,
   saveRecipeDoc,
   deleteRecipeDoc,
@@ -167,19 +168,21 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const pairParam = params?.get('pair');
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const params = new URLSearchParams(window.location.search);
-        const pair = params.get('pair');
-        if (pair) parsed.pairCode = pair;
+        if (pairParam) parsed.pairCode = pairParam;
         return parsed;
       }
     } catch {
       // fallback
     }
-    return INITIAL_SETTINGS;
+    const initial = { ...INITIAL_SETTINGS };
+    if (pairParam) initial.pairCode = pairParam;
+    return initial;
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
@@ -276,10 +279,17 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
         playChime('success');
 
-        // Immediately backup existing schedule & recipes to Firestore
-        schedule.forEach((d) => saveScheduleDoc(settings.pairCode, d));
-        recipes.forEach((r) => saveRecipeDoc(settings.pairCode, r));
-        savePairingDoc(settings.pairCode, settings);
+        // Check if the couple already has an existing cloud schedule in Firestore
+        const existingRemoteSchedule = await fetchScheduleOnce(settings.pairCode);
+        if (existingRemoteSchedule && existingRemoteSchedule.length > 0) {
+          // Adopt the shared couple schedule
+          setSchedule(existingRemoteSchedule);
+        } else {
+          // First time initialization: write initial schedule & recipes to Firestore
+          schedule.forEach((d) => saveScheduleDoc(settings.pairCode, d));
+          recipes.forEach((r) => saveRecipeDoc(settings.pairCode, r));
+          savePairingDoc(settings.pairCode, settings);
+        }
         setLastCloudSync(new Date());
       }
     } catch (error) {

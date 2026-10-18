@@ -4,6 +4,7 @@ import { WeekendVibesCard } from './WeekendVibesCard';
 import { SundayPromptBanner } from './SundayPromptBanner';
 import { EditBlockModal } from './EditBlockModal';
 import { WolfyAvatar } from './WolfyAvatar';
+import { GoogleAuthButton } from './GoogleAuthButton';
 import {
   DayOfWeek,
   PartnerId,
@@ -97,6 +98,28 @@ export const WeeklyRoutineView: React.FC = () => {
   return (
     <div className="space-y-4 pb-20">
       
+      {/* Calm Google Calendar & Cloud Storage Banner (Visible when not logged in) */}
+      {!authUser && (
+        <div className="bg-[#181514] border border-stone-800 hover:border-amber-500/40 transition-colors rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-stone-200">
+                Google Calendar & Cloud Sync
+              </p>
+              <p className="text-[11px] sm:text-xs text-stone-400">
+                Sign in to sync your AM/PM routines with Google Calendar and safeguard your weekly plan in Firestore.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 self-start sm:self-center">
+            <GoogleAuthButton />
+          </div>
+        </div>
+      )}
+
       {/* Calm Sunday Check-in Banner */}
       <SundayPromptBanner />
 
