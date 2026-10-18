@@ -25,6 +25,10 @@ import {
   Calendar,
   Layers,
   HeartHandshake,
+  Cloud,
+  Upload,
+  Download,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const WeeklyRoutineView: React.FC = () => {
@@ -37,6 +41,12 @@ export const WeeklyRoutineView: React.FC = () => {
     setActiveTab,
     setSelectedRecipeModal,
     recipes,
+    authUser,
+    googleAccessToken,
+    loginWithGoogle,
+    setIsCalendarModalOpen,
+    isCloudSyncing,
+    lastCloudSync,
   } = useWolfy();
 
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -93,6 +103,76 @@ export const WeeklyRoutineView: React.FC = () => {
     <div className="space-y-5 pb-20">
       {/* Sunday Prompt Banner */}
       <SundayPromptBanner />
+
+      {/* Google Calendar & Persistent Cloud Storage Card */}
+      {!authUser ? (
+        <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-emerald-950/40 border border-emerald-800/40 rounded-2xl p-4 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-400 shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-emerald-200">
+                  Google Calendar & Persistent Cloud Storage
+                </h4>
+                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.2 rounded-full border border-emerald-500/30">
+                  Google Workspace
+                </span>
+              </div>
+              <p className="text-xs text-stone-300 mt-0.5 leading-relaxed">
+                Connect your Google account to sync rough routines to Google Calendar and back up your couple's weekly data in Firestore so it's never lost.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={loginWithGoogle}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-900 font-bold text-xs shadow-md transition-all self-start sm:self-center shrink-0 cursor-pointer"
+          >
+            <div className="w-3.5 h-3.5 shrink-0">
+              <svg viewBox="0 0 48 48" className="w-full h-full block">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+              </svg>
+            </div>
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+      ) : (
+        <div className="bg-stone-900/90 border border-emerald-800/40 rounded-2xl p-3.5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
+              <Calendar className="w-4 h-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-stone-200">
+                  Google Calendar & Cloud Sync Connected
+                </span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-1.5 py-0.2 rounded-md">
+                  Active
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-400 mt-0.5">
+                {authUser.displayName || authUser.email} • Continuous Firestore Backup
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setIsCalendarModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-xs transition-colors cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Sync with Google Calendar</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Week Day Selector & View Mode Switcher */}
       <div className="bg-stone-900/90 border border-stone-800 rounded-2xl p-2.5 shadow-md flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

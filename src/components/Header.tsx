@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWolfy } from '../context/WolfyContext';
 import { WolfyAvatar } from './WolfyAvatar';
+import { GoogleAuthButton } from './GoogleAuthButton';
 import {
   Bell,
   UserPlus,
@@ -10,6 +11,7 @@ import {
   Check,
   ChevronDown,
   Volume2,
+  Calendar,
 } from 'lucide-react';
 import { PartnerId } from '../types';
 
@@ -23,7 +25,9 @@ export const Header: React.FC = () => {
     activeTab,
     setIsSundayWizardOpen,
     setIsInviteModalOpen,
+    setIsCalendarModalOpen,
     simulatePartnerUpdate,
+    authUser,
   } = useWolfy();
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -67,6 +71,9 @@ export const Header: React.FC = () => {
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           
+          {/* Google Sign in & Calendar Sync */}
+          <GoogleAuthButton compact />
+
           {/* Sunday Check-in Button */}
           <button
             onClick={() => setIsSundayWizardOpen(true)}

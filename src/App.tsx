@@ -10,6 +10,7 @@ import { SundayWizardModal } from './components/SundayWizardModal';
 import { RecipeModal } from './components/RecipeModal';
 import { InvitePartnerModal } from './components/InvitePartnerModal';
 import { SettingsModal } from './components/SettingsModal';
+import { GoogleCalendarSyncModal } from './components/GoogleCalendarSyncModal';
 import { BottomNav } from './components/BottomNav';
 import { WolfyAvatar } from './components/WolfyAvatar';
 import { Sliders, CalendarCheck, Utensils, Heart } from 'lucide-react';
@@ -82,6 +83,7 @@ const MainAppContent: React.FC = () => {
       <SundayWizardModal />
       <RecipeModal />
       <InvitePartnerModal />
+      <GoogleCalendarSyncModal />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );

@@ -1,0 +1,134 @@
+{
+  "entities": {
+    "DayScheduleDoc": {
+      "title": "DayScheduleDoc",
+      "description": "Weekly routine, AM/PM blocks, weekend vibes and dinner plan for a specific day",
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "string",
+          "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        },
+        "dayLabel": {
+          "type": "string"
+        },
+        "shortLabel": {
+          "type": "string"
+        },
+        "dateStr": {
+          "type": "string"
+        },
+        "pairCode": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "partner1": {
+          "type": "object"
+        },
+        "partner2": {
+          "type": "object"
+        },
+        "dinner": {
+          "type": "object"
+        },
+        "weekendVibes": {
+          "type": "object"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "updatedBy": {
+          "type": "string"
+        }
+      },
+      "required": ["day", "pairCode"]
+    },
+    "RecipeDoc": {
+      "title": "RecipeDoc",
+      "description": "Recipe entity shared between partners",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "pairCode": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "prepTime": {
+          "type": "string"
+        },
+        "cookTime": {
+          "type": "string"
+        },
+        "servings": {
+          "type": "number"
+        },
+        "difficulty": {
+          "type": "string"
+        },
+        "ingredients": {
+          "type": "array"
+        },
+        "instructions": {
+          "type": "array"
+        },
+        "wolfyTip": {
+          "type": "string"
+        },
+        "imageEmoji": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array"
+        }
+      },
+      "required": ["id", "name", "pairCode"]
+    },
+    "PairingDoc": {
+      "title": "PairingDoc",
+      "description": "Pairing metadata and partner configuration for a couple",
+      "type": "object",
+      "properties": {
+        "pairCode": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "partner1": {
+          "type": "object"
+        },
+        "partner2": {
+          "type": "object"
+        },
+        "sundayReminderDay": {
+          "type": "string"
+        },
+        "sundayReminderTime": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": ["pairCode"]
+    }
+  },
+  "firestore": {
+    "/schedules/{docId}": {
+      "schema": "DayScheduleDoc",
+      "description": "Collection of daily schedules for paired couples"
+    },
+    "/recipes/{recipeId}": {
+      "schema": "RecipeDoc",
+      "description": "Collection of recipes shared by paired couples"
+    },
+    "/pairings/{pairCode}": {
+      "schema": "PairingDoc",
+      "description": "Couple pairing settings and preferences"
+    }
+  }
+}

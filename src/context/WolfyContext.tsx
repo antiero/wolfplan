@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   DaySchedule,
   Recipe,
@@ -8,6 +8,7 @@ import {
   PartnerId,
   ScheduleBlock,
   DinnerPlan,
+  WeekendVibesPlan,
 } from '../types';
 import {
   INITIAL_SCHEDULE,
@@ -16,6 +17,20 @@ import {
   INITIAL_NOTIFICATIONS,
 } from '../data/initialData';
 import { playChime } from '../utils/sound';
+import { User } from 'firebase/auth';
+import {
+  initAuth,
+  googleSignIn,
+  logout,
+  saveScheduleDoc,
+  subscribeToWeeklySchedule,
+  saveRecipeDoc,
+  deleteRecipeDoc,
+  subscribeToRecipes,
+  savePairingDoc,
+  testFirestoreConnection,
+  setAccessToken,
+} from '../services/firebase';
 
 interface ToastNotification {
   id: string;
@@ -36,19 +51,30 @@ interface WolfyContextType {
   liveToast: ToastNotification | null;
   isSundayWizardOpen: boolean;
   isInviteModalOpen: boolean;
+  isCalendarModalOpen: boolean;
   selectedRecipeModal: Recipe | null;
   unreadCount: number;
+
+  // Auth & Cloud Sync
+  authUser: User | null;
+  googleAccessToken: string | null;
+  isCloudSyncing: boolean;
+  lastCloudSync: Date | null;
 
   setActiveTab: (tab: 'routine' | 'dinners' | 'sunday' | 'recipes' | 'notifications' | 'settings') => void;
   setSelectedDay: (day: DayOfWeek) => void;
   setActiveUser: (user: PartnerId) => void;
   setIsSundayWizardOpen: (open: boolean) => void;
   setIsInviteModalOpen: (open: boolean) => void;
+  setIsCalendarModalOpen: (open: boolean) => void;
   setSelectedRecipeModal: (recipe: Recipe | null) => void;
+
+  loginWithGoogle: () => Promise<void>;
+  logoutUser: () => Promise<void>;
 
   updateScheduleBlock: (day: DayOfWeek, partnerId: PartnerId, period: 'am' | 'pm', update: Partial<ScheduleBlock>) => void;
   updateDinnerPlan: (day: DayOfWeek, update: Partial<DinnerPlan>) => void;
-  updateWeekendVibes: (day: DayOfWeek, update: Partial<import('../types').WeekendVibesPlan>) => void;
+  updateWeekendVibes: (day: DayOfWeek, update: Partial<WeekendVibesPlan>) => void;
   saveFullDayRoutine: (day: DayOfWeek, p1Am: ScheduleBlock, p1Pm: ScheduleBlock, p2Am: ScheduleBlock, p2Pm: ScheduleBlock, dinner: DinnerPlan) => void;
   
   addRecipe: (recipe: Recipe) => void;
@@ -116,7 +142,6 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure pair code in query params preserves if given
         const params = new URLSearchParams(window.location.search);
         const pair = params.get('pair');
         if (pair) parsed.pairCode = pair;
@@ -140,16 +165,118 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [activeTab, setActiveTab] = useState<'routine' | 'dinners' | 'sunday' | 'recipes' | 'notifications' | 'settings'>('routine');
   
-  // Current day of week detection
   const todayDayName = (['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()] || 'monday') as DayOfWeek;
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>(todayDayName);
 
   const [liveToast, setLiveToast] = useState<ToastNotification | null>(null);
   const [isSundayWizardOpen, setIsSundayWizardOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
 
-  // Persistence
+  // Auth & Cloud sync states
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [lastCloudSync, setLastCloudSync] = useState<Date | null>(null);
+
+  const isInitialRemoteLoad = useRef(false);
+
+  // Initialize Firebase Auth listener & Test connection on boot
+  useEffect(() => {
+    testFirestoreConnection();
+    const unsubscribe = initAuth(
+      (user, token) => {
+        setAuthUser(user);
+        if (token) setGoogleAccessToken(token);
+      },
+      () => {
+        setAuthUser(null);
+        setGoogleAccessToken(null);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to Firestore real-time updates when user is authenticated
+  useEffect(() => {
+    if (!authUser || !settings.pairCode) return;
+
+    setIsCloudSyncing(true);
+    const unsubSchedule = subscribeToWeeklySchedule(
+      settings.pairCode,
+      (remoteSchedules) => {
+        if (remoteSchedules && remoteSchedules.length > 0) {
+          setSchedule(remoteSchedules);
+          setLastCloudSync(new Date());
+          isInitialRemoteLoad.current = true;
+        }
+        setIsCloudSyncing(false);
+      },
+      () => {
+        setIsCloudSyncing(false);
+      }
+    );
+
+    const unsubRecipes = subscribeToRecipes(settings.pairCode, (remoteRecipes) => {
+      if (remoteRecipes && remoteRecipes.length > 0) {
+        setRecipes(remoteRecipes);
+      }
+    });
+
+    return () => {
+      unsubSchedule();
+      unsubRecipes();
+    };
+  }, [authUser, settings.pairCode]);
+
+  // Google Login flow
+  const loginWithGoogle = async () => {
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        setAuthUser(result.user);
+        setGoogleAccessToken(result.accessToken);
+        setAccessToken(result.accessToken);
+        showToast({
+          id: String(Date.now()),
+          title: 'Google Connected 📅',
+          message: `Signed in as ${result.user.displayName || result.user.email}. Persistent cloud storage & Google Calendar active!`,
+          authorName: 'Google',
+          type: 'google_connected',
+        });
+        playChime('success');
+
+        // Immediately backup existing schedule & recipes to Firestore
+        schedule.forEach((d) => saveScheduleDoc(settings.pairCode, d));
+        recipes.forEach((r) => saveRecipeDoc(settings.pairCode, r));
+        savePairingDoc(settings.pairCode, settings);
+        setLastCloudSync(new Date());
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+    }
+  };
+
+  const logoutUser = async () => {
+    try {
+      await logout();
+      setAuthUser(null);
+      setGoogleAccessToken(null);
+      setAccessToken(null);
+      showToast({
+        id: String(Date.now()),
+        title: 'Signed Out',
+        message: 'Signed out of Google account. Local data remains saved.',
+        authorName: 'Wolfy',
+        type: 'logout',
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Local storage persistence
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(schedule));
@@ -199,7 +326,6 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (settings.realtimeAlerts) {
       playChime('notification');
     }
-    // Auto dismiss after 5 seconds
     setTimeout(() => {
       setLiveToast((current) => (current?.id === toast.id ? null : current));
     }, 5500);
@@ -207,7 +333,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const dismissToast = () => setLiveToast(null);
 
-  // Cross-tab synchronization via BroadcastChannel
+  // Cross-tab broadcast synchronization
   useEffect(() => {
     let channel: BroadcastChannel | null = null;
     try {
@@ -239,7 +365,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       };
     } catch {
-      // BroadcastChannel not available
+      // BroadcastChannel fallback
     }
 
     return () => {
@@ -271,7 +397,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timestamp: Date.now(),
       read: false,
     };
-    setNotifications((prev) => [newItem, ...prev.slice(0, 49)]); // keep latest 50
+    setNotifications((prev) => [newItem, ...prev.slice(0, 49)]);
     return newItem;
   }, []);
 
@@ -282,24 +408,27 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     update: Partial<ScheduleBlock>
   ) => {
     setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
       const next = prev.map((d) => {
         if (d.day !== day) return d;
         const currentPartnerData = d[targetPartner];
         const updatedPeriod = { ...currentPartnerData[period], ...update };
-        return {
+        const updatedDoc = {
           ...d,
           [targetPartner]: {
             ...currentPartnerData,
             [period]: updatedPeriod,
           },
         };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
       });
 
       const authorName = activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name;
       const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
       const activitySummary = update.activity ? ` (${update.activity})` : '';
 
-      const notif = addNotification({
+      addNotification({
         authorId: activeUser,
         authorName,
         title: `${authorName} updated ${dayLabel} ${period.toUpperCase()}`,
@@ -309,21 +438,31 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       broadcastChange('SCHEDULE_UPDATE', next, `${authorName} updated ${dayLabel} ${period.toUpperCase()}`);
+
+      // Sync to Firestore if authenticated
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
       return next;
     });
   }, [activeUser, settings, addNotification]);
 
   const updateDinnerPlan = useCallback((day: DayOfWeek, update: Partial<DinnerPlan>) => {
     setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
       const next = prev.map((d) => {
         if (d.day !== day) return d;
-        return {
+        const updatedDoc = {
           ...d,
           dinner: {
             ...d.dinner,
             ...update,
           },
         };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
       });
 
       const authorName = activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name;
@@ -342,12 +481,19 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       broadcastChange('DINNER_UPDATE', next, `${authorName} updated ${dayLabel} dinner`);
+
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
       return next;
     });
   }, [activeUser, settings, addNotification]);
 
-  const updateWeekendVibes = useCallback((day: DayOfWeek, update: Partial<import('../types').WeekendVibesPlan>) => {
+  const updateWeekendVibes = useCallback((day: DayOfWeek, update: Partial<WeekendVibesPlan>) => {
     setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
       const next = prev.map((d) => {
         if (d.day !== day) return d;
         const currentVibes = d.weekendVibes || {
@@ -359,13 +505,15 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           funTags: [],
           noAlarm: true,
         };
-        return {
+        const updatedDoc = {
           ...d,
           weekendVibes: {
             ...currentVibes,
             ...update,
           },
         };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
       });
 
       const authorName = activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name;
@@ -381,6 +529,12 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       broadcastChange('SCHEDULE_UPDATE', next, `${authorName} updated ${dayLabel} Weekend Vibes`);
+
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
       return next;
     });
   }, [activeUser, settings, addNotification]);
@@ -394,14 +548,17 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     dinner: DinnerPlan
   ) => {
     setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
       const next = prev.map((d) => {
         if (d.day !== day) return d;
-        return {
+        const updatedDoc = {
           ...d,
           partner1: { am: p1Am, pm: p1Pm },
           partner2: { am: p2Am, pm: p2Pm },
           dinner,
         };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
       });
 
       const authorName = activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name;
@@ -417,12 +574,19 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       broadcastChange('SCHEDULE_UPDATE', next, `${authorName} synced ${dayLabel}`);
+
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
       return next;
     });
   }, [activeUser, settings, addNotification]);
 
   const addRecipe = useCallback((recipe: Recipe) => {
     setRecipes((prev) => [recipe, ...prev]);
+    saveRecipeDoc(settings.pairCode, recipe);
     const authorName = activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name;
     addNotification({
       authorId: activeUser,
@@ -434,14 +598,21 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [activeUser, settings, addNotification]);
 
   const updateRecipe = useCallback((id: string, update: Partial<Recipe>) => {
-    setRecipes((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...update } : r))
-    );
-  }, []);
+    setRecipes((prev) => {
+      const next = prev.map((r) => {
+        if (r.id !== id) return r;
+        const updated = { ...r, ...update };
+        saveRecipeDoc(settings.pairCode, updated);
+        return updated;
+      });
+      return next;
+    });
+  }, [settings.pairCode]);
 
   const deleteRecipe = useCallback((id: string) => {
     setRecipes((prev) => prev.filter((r) => r.id !== id));
-  }, []);
+    deleteRecipeDoc(settings.pairCode, id);
+  }, [settings.pairCode]);
 
   const toggleIngredientChecked = useCallback((recipeId: string, ingredientIdx: number) => {
     setRecipes((prev) =>
@@ -460,7 +631,11 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const updateSettings = useCallback((update: Partial<AppSettings>) => {
-    setSettings((prev) => ({ ...prev, ...update }));
+    setSettings((prev) => {
+      const next = { ...prev, ...update };
+      savePairingDoc(next.pairCode, next);
+      return next;
+    });
   }, []);
 
   const markNotificationRead = useCallback((id: string) => {
@@ -477,7 +652,6 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setNotifications([]);
   }, []);
 
-  // Demo tool: simulate an update incoming from the other partner
   const simulatePartnerUpdate = useCallback((scenario?: string) => {
     const otherPartnerId: PartnerId = activeUser === 'partner1' ? 'partner2' : 'partner1';
     const otherPartner = otherPartnerId === 'partner1' ? settings.partner1 : settings.partner2;
@@ -525,7 +699,6 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         type: 'dinner_update',
       });
     } else {
-      // Default Wolfy walk nudge
       addNotification({
         authorId: otherPartnerId,
         authorName: otherPartner.name,
@@ -546,9 +719,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const checkSundayPromptDue = useCallback(() => {
     if (!settings.sundayReminderEnabled) return false;
     const now = new Date();
-    const day = now.getDay(); // 0 is Sunday
-    // For demonstration, if today is Sunday, or if user triggers it
-    return day === 0;
+    return now.getDay() === 0;
   }, [settings.sundayReminderEnabled]);
 
   const resetToDefaults = () => {
@@ -578,15 +749,25 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         liveToast,
         isSundayWizardOpen,
         isInviteModalOpen,
+        isCalendarModalOpen,
         selectedRecipeModal,
         unreadCount,
+
+        authUser,
+        googleAccessToken,
+        isCloudSyncing,
+        lastCloudSync,
 
         setActiveTab,
         setSelectedDay,
         setActiveUser,
         setIsSundayWizardOpen,
         setIsInviteModalOpen,
+        setIsCalendarModalOpen,
         setSelectedRecipeModal,
+
+        loginWithGoogle,
+        logoutUser,
 
         updateScheduleBlock,
         updateDinnerPlan,

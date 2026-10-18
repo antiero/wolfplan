@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { playChime } from '../utils/sound';
 
+import { GoogleAuthButton } from './GoogleAuthButton';
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -72,6 +74,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         {/* Form Body */}
         <div className="p-5 space-y-5 text-xs sm:text-sm">
           
+          {/* Google Account & Cloud Persistence */}
+          <div>
+            <label className="text-xs font-bold text-stone-300 block mb-2">
+              Google Account & Cloud Storage
+            </label>
+            <GoogleAuthButton />
+          </div>
+
           {/* Sunday Check-in Preference (Requirement: "Every Sunday night, at 9.30pm (or at a time of preference)") */}
           <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-800/40 space-y-3">
             <div className="flex items-center justify-between">

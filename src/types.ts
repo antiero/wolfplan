@@ -109,4 +109,6 @@ export interface AppSettings {
   dogWalkingTracker: boolean;
   activeViewPartner: PartnerId | 'both';
   pairCode: string;
+  googleCalendarConnected?: boolean;
+  cloudSyncEnabled?: boolean;
 }
