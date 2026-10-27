@@ -9,6 +9,9 @@ export const SundayPromptBanner: React.FC = () => {
 
   if (!settings.sundayReminderEnabled || isDismissed) return null;
 
+  const p1Name = settings.partner1.name === 'Alex' ? 'Antony' : (settings.partner1.name || 'Antony');
+  const p2Name = settings.partner2.name === 'Alex' ? 'Beth' : (settings.partner2.name || 'Beth');
+
   return (
     <div className="bg-stone-900/70 border border-stone-800/80 rounded-2xl p-3 sm:p-3.5 shadow-xs flex items-center justify-between gap-3 transition-all">
       <div className="flex items-center gap-2.5 min-w-0">
@@ -21,8 +24,8 @@ export const SundayPromptBanner: React.FC = () => {
           </div>
           <p className="text-[11px] text-stone-400 truncate">
             {hasCompletedFirstWeek
-              ? 'Week 2 agenda: pre-populate from last week or start fresh'
-              : `Map out rough AM / PM blocks for ${settings.partner1.name} & ${settings.partner2.name}`}
+              ? 'Week agenda: pre-populate from last week or start fresh'
+              : `Map out Daytime & Evening blocks for ${p1Name} & ${p2Name}`}
           </p>
         </div>
       </div>

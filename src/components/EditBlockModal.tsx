@@ -27,8 +27,12 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
   const [wolfyDuty, setWolfyDuty] = useState(!!initialBlock.wolfyDuty);
 
   const partner = partnerId === 'partner1' ? settings.partner1 : settings.partner2;
+  const partnerName = partner.name === 'Alex' ? (partnerId === 'partner1' ? 'Antony' : 'Beth') : (partner.name || (partnerId === 'partner1' ? 'Antony' : 'Beth'));
+  const partnerShortName = partner.shortName === 'Alex' ? (partnerId === 'partner1' ? 'Ant' : 'Beth') : (partner.shortName || (partnerId === 'partner1' ? 'Ant' : 'Beth'));
+
   const chips = period === 'am' ? COMMON_AM_CHIPS : COMMON_PM_CHIPS;
   const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
+  const periodLabel = period === 'am' ? 'Daytime' : 'Evening';
 
   const handleSave = () => {
     updateScheduleBlock(day, partnerId, period, {
@@ -48,14 +52,14 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-stone-800">
           <div className="flex items-center gap-2.5">
             <span className={`w-7 h-7 rounded-full ${partner.avatarBg} text-white text-xs font-bold flex items-center justify-center`}>
-              {partner.shortName.charAt(0)}
+              {partnerShortName.charAt(0)}
             </span>
             <div>
               <h3 className="font-bold text-base text-amber-200">
-                Edit {dayLabel} {period.toUpperCase()}
+                Edit {dayLabel} {periodLabel}
               </h3>
               <p className="text-xs text-stone-400">
-                Update rough schedule for {partner.name}
+                Update rough {periodLabel.toLowerCase()} routine for {partnerName}
               </p>
             </div>
           </div>
@@ -78,7 +82,7 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
               type="text"
               value={activity}
               onChange={(e) => setActivity(e.target.value)}
-              placeholder={period === 'am' ? 'e.g. Working from Home & Gym' : 'e.g. Out with workmates'}
+              placeholder={period === 'am' ? 'e.g. Working from Home & Gym' : 'e.g. Out with workmates, Pilates or dinner'}
               className="w-full px-3.5 py-2.5 rounded-xl bg-stone-950 border border-stone-700 text-sm text-stone-100 focus:border-amber-500 focus:outline-hidden"
               autoFocus
             />
@@ -86,7 +90,7 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
             {/* Quick Chips */}
             <div className="mt-2.5">
               <span className="text-[11px] text-stone-400 font-medium block mb-1.5">
-                Quick One-Tap Presets:
+                Quick {periodLabel} Presets:
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {chips.map((chip) => (

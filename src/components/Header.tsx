@@ -108,7 +108,7 @@ export const Header: React.FC = () => {
                     className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-stone-800 text-stone-200 transition-colors flex flex-col"
                   >
                     <span className="font-semibold text-amber-200">🍻 Tuesday: Out with workmates</span>
-                    <span className="text-[10px] text-stone-400">Sets Tuesday PM out & separate dinner</span>
+                    <span className="text-[10px] text-stone-400">Sets Tuesday Evening out & separate dinner</span>
                   </button>
                   <button
                     onClick={() => {

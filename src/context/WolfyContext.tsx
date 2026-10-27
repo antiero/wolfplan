@@ -19,6 +19,7 @@ import {
 } from '../data/initialData';
 import { playChime } from '../utils/sound';
 import { User } from 'firebase/auth';
+import { syncScheduleWithCurrentWeek, formatWeekHeader } from '../utils/dates';
 import {
   initAuth,
   googleSignIn,
@@ -52,6 +53,8 @@ interface WolfyContextType {
   activeUser: PartnerId;
   activeTab: 'routine' | 'dinners' | 'sunday' | 'recipes' | 'notifications' | 'settings';
   selectedDay: DayOfWeek;
+  weekOffset: number;
+  currentWeekHeader: string;
   liveToast: ToastNotification | null;
   isSundayWizardOpen: boolean;
   isInviteModalOpen: boolean;
@@ -66,6 +69,7 @@ interface WolfyContextType {
   isCloudSyncing: boolean;
   lastCloudSync: Date | null;
 
+  setWeekOffset: (offset: number) => void;
   setActiveTab: (tab: 'routine' | 'dinners' | 'sunday' | 'recipes' | 'notifications' | 'settings') => void;
   setSelectedDay: (day: DayOfWeek) => void;
   setActiveUser: (user: PartnerId) => void;
@@ -131,14 +135,20 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
+  const [weekOffset, setWeekOffset] = useState<number>(0);
+
   const [schedule, setSchedule] = useState<DaySchedule[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SCHEDULE);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Automatically sync schedule day dates to current week so dates never freeze on last week
+        return syncScheduleWithCurrentWeek(parsed, new Date(), 0);
+      }
     } catch {
       // fallback
     }
-    return INITIAL_SCHEDULE;
+    return syncScheduleWithCurrentWeek(INITIAL_SCHEDULE, new Date(), 0);
   });
 
   const [previousWeekSchedule, setPreviousWeekSchedule] = useState<DaySchedule[] | null>(() => {
@@ -183,14 +193,38 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (saved) {
         const parsed = JSON.parse(saved);
         if (pairParam) parsed.pairCode = pairParam;
-        if (nameParam && (parsed.partner2.name === 'Partner' || parsed.partner2.name === 'Partner 2' || parsed.partner2.name === 'Alex' || userParam === 'partner2')) {
-          parsed.partner2.name = nameParam;
-          parsed.partner2.shortName = nameParam.slice(0, 4);
+        
+        // Permanently normalize any legacy 'Alex', 'Partner', or empty partner2 names to Beth
+        if (
+          !parsed.partner2?.name ||
+          parsed.partner2.name === 'Partner' ||
+          parsed.partner2.name === 'Partner 2' ||
+          parsed.partner2.name === 'Alex' ||
+          userParam === 'partner2'
+        ) {
+          const finalP2Name = nameParam || (parsed.partner2?.name === 'Alex' || !parsed.partner2?.name ? 'Beth' : parsed.partner2.name);
+          parsed.partner2 = {
+            ...parsed.partner2,
+            name: finalP2Name,
+            shortName: finalP2Name.slice(0, 4),
+          };
         }
-        if (p1NameParam && (parsed.partner1.name === 'Partner' || parsed.partner1.name === 'Partner 1')) {
-          parsed.partner1.name = p1NameParam;
-          parsed.partner1.shortName = p1NameParam.slice(0, 4);
+
+        // Permanently normalize any legacy 'Alex', 'Partner', or empty partner1 names to Antony
+        if (
+          !parsed.partner1?.name ||
+          parsed.partner1.name === 'Partner' ||
+          parsed.partner1.name === 'Partner 1' ||
+          parsed.partner1.name === 'Alex'
+        ) {
+          const finalP1Name = p1NameParam || (parsed.partner1?.name === 'Alex' || !parsed.partner1?.name ? 'Antony' : parsed.partner1.name);
+          parsed.partner1 = {
+            ...parsed.partner1,
+            name: finalP1Name,
+            shortName: finalP1Name.slice(0, 4),
+          };
         }
+
         return parsed;
       }
     } catch {
@@ -218,7 +252,12 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_NOTIFS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: NotificationItem[] = JSON.parse(saved);
+        return parsed.map((n) =>
+          n.authorName === 'Alex' ? { ...n, authorName: 'Beth' } : n
+        );
+      }
     } catch {
       // fallback
     }
@@ -270,7 +309,9 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       settings.pairCode,
       (remoteSchedules) => {
         if (remoteSchedules && remoteSchedules.length > 0) {
-          setSchedule(remoteSchedules);
+          // Always keep schedule dates matching the active week so dates never freeze on last week
+          const synced = syncScheduleWithCurrentWeek(remoteSchedules, new Date(), weekOffset);
+          setSchedule(synced);
           setLastCloudSync(new Date());
           isInitialRemoteLoad.current = true;
         }
@@ -289,12 +330,39 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const unsubPairing = subscribeToPairing(settings.pairCode, (remotePairing) => {
       if (remotePairing) {
+        let needsSyncBack = false;
+        const cleanPairing = { ...remotePairing };
+
+        // Normalize partner2 name if legacy 'Alex' or 'Partner'
+        if (cleanPairing.partner2?.name === 'Alex' || cleanPairing.partner2?.name === 'Partner' || cleanPairing.partner2?.name === 'Partner 2') {
+          cleanPairing.partner2 = {
+            ...cleanPairing.partner2,
+            name: 'Beth',
+            shortName: 'Beth',
+          };
+          needsSyncBack = true;
+        }
+
+        // Normalize partner1 name if legacy 'Alex' or 'Partner'
+        if (cleanPairing.partner1?.name === 'Alex' || cleanPairing.partner1?.name === 'Partner' || cleanPairing.partner1?.name === 'Partner 1') {
+          cleanPairing.partner1 = {
+            ...cleanPairing.partner1,
+            name: 'Antony',
+            shortName: 'Ant',
+          };
+          needsSyncBack = true;
+        }
+
         setSettings((prev) => ({
           ...prev,
-          ...remotePairing,
-          partner1: { ...prev.partner1, ...(remotePairing.partner1 || {}) },
-          partner2: { ...prev.partner2, ...(remotePairing.partner2 || {}) },
+          ...cleanPairing,
+          partner1: { ...prev.partner1, ...(cleanPairing.partner1 || {}) },
+          partner2: { ...prev.partner2, ...(cleanPairing.partner2 || {}) },
         }));
+
+        if (needsSyncBack && authUser) {
+          savePairingDoc(settings.pairCode, cleanPairing);
+        }
       }
     });
 
@@ -303,7 +371,14 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       unsubRecipes();
       unsubPairing();
     };
-  }, [authUser, settings.pairCode]);
+  }, [authUser, settings.pairCode, weekOffset]);
+
+  // Keep schedule dates updated if weekOffset changes
+  useEffect(() => {
+    setSchedule((prev) => syncScheduleWithCurrentWeek(prev, new Date(), weekOffset));
+  }, [weekOffset]);
+
+  const currentWeekHeader = formatWeekHeader(new Date(), weekOffset);
 
   // Google Login flow
   const loginWithGoogle = async () => {
@@ -325,7 +400,8 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Sync shared couple schedule from Firestore
         const existingRemoteSchedule = await fetchScheduleOnce(settings.pairCode);
         if (existingRemoteSchedule && existingRemoteSchedule.length > 0) {
-          setSchedule(existingRemoteSchedule);
+          const synced = syncScheduleWithCurrentWeek(existingRemoteSchedule, new Date(), weekOffset);
+          setSchedule(synced);
         } else {
           schedule.forEach((d) => saveScheduleDoc(settings.pairCode, d));
           recipes.forEach((r) => saveRecipeDoc(settings.pairCode, r));
@@ -334,12 +410,33 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Sync pairing settings & partner names from Firestore
         const remotePairing = await fetchPairingOnce(settings.pairCode);
         if (remotePairing) {
+          let needsSyncBack = false;
+          const cleanPairing = { ...remotePairing };
+
+          if (cleanPairing.partner2?.name === 'Alex' || cleanPairing.partner2?.name === 'Partner' || cleanPairing.partner2?.name === 'Partner 2') {
+            cleanPairing.partner2 = {
+              ...cleanPairing.partner2,
+              name: 'Beth',
+              shortName: 'Beth',
+            };
+            needsSyncBack = true;
+          }
+
+          if (cleanPairing.partner1?.name === 'Alex' || cleanPairing.partner1?.name === 'Partner' || cleanPairing.partner1?.name === 'Partner 1') {
+            cleanPairing.partner1 = {
+              ...cleanPairing.partner1,
+              name: 'Antony',
+              shortName: 'Ant',
+            };
+            needsSyncBack = true;
+          }
+
           setSettings((prev) => {
             const next = {
               ...prev,
-              ...remotePairing,
-              partner1: { ...prev.partner1, ...(remotePairing.partner1 || {}) },
-              partner2: { ...prev.partner2, ...(remotePairing.partner2 || {}) },
+              ...cleanPairing,
+              partner1: { ...prev.partner1, ...(cleanPairing.partner1 || {}) },
+              partner2: { ...prev.partner2, ...(cleanPairing.partner2 || {}) },
             };
             const activeProfile = next[activeUser];
             // Auto-populate Google profile photo if not yet set
@@ -348,6 +445,10 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
             return next;
           });
+
+          if (needsSyncBack) {
+            savePairingDoc(settings.pairCode, cleanPairing);
+          }
         } else {
           // If first user, persist initial pairing doc with partner names
           savePairingDoc(settings.pairCode, settings);
@@ -847,7 +948,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       showToast({
         id: String(Date.now()),
-        title: `${otherPartner.name} updated Friday AM!`,
+        title: `${otherPartner.name} updated Friday Daytime!`,
         message: 'Swapped to WFH & taking Wolfy on morning walk!',
         authorName: otherPartner.name,
         type: 'schedule_update',
@@ -916,6 +1017,8 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         activeUser,
         activeTab,
         selectedDay,
+        weekOffset,
+        currentWeekHeader,
         liveToast,
         isSundayWizardOpen,
         isInviteModalOpen,
@@ -929,6 +1032,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isCloudSyncing,
         lastCloudSync,
 
+        setWeekOffset,
         setActiveTab,
         setSelectedDay,
         setActiveUser,

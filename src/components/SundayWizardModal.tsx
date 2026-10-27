@@ -54,6 +54,8 @@ export const SundayWizardModal: React.FC = () => {
   const currentDay = localSchedule[currentDayIndex];
   const p1 = settings.partner1;
   const p2 = settings.partner2;
+  const p1Short = p1.shortName === 'Alex' ? 'Ant' : (p1.shortName || 'Ant');
+  const p2Short = p2.shortName === 'Alex' ? 'Beth' : (p2.shortName || 'Beth');
 
   // Choice 1: Pre-populate from previous week
   const handlePrePopulateFromLastWeek = () => {
@@ -330,11 +332,11 @@ export const SundayWizardModal: React.FC = () => {
                   </label>
                 </div>
 
-                {/* AM */}
+                {/* Daytime */}
                 <div>
-                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400">
-                    <Sun className="w-3 h-3 text-amber-400" />
-                    <span>AM</span>
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400 font-medium">
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Daytime</span>
                   </div>
                   <input
                     type="text"
@@ -357,11 +359,11 @@ export const SundayWizardModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* PM */}
+                {/* Evening */}
                 <div className="pt-1">
-                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400">
-                    <Moon className="w-3 h-3 text-indigo-400" />
-                    <span>PM</span>
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400 font-medium">
+                    <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Evening</span>
                   </div>
                   <input
                     type="text"
@@ -385,12 +387,12 @@ export const SundayWizardModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Partner 2 AM/PM */}
+              {/* Partner 2 Daytime/Evening */}
               <div className="p-3.5 rounded-2xl bg-stone-900/60 border border-stone-800/70 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-stone-200 flex items-center gap-1.5">
                     <span className={`w-2 h-2 rounded-full ${p2.avatarBg}`} />
-                    {p2.name}
+                    {p2.name === 'Alex' ? 'Beth' : (p2.name || 'Beth')}
                   </span>
                   <label className="flex items-center gap-1 text-[11px] text-stone-400 cursor-pointer">
                     <input
@@ -404,11 +406,11 @@ export const SundayWizardModal: React.FC = () => {
                   </label>
                 </div>
 
-                {/* AM */}
+                {/* Daytime */}
                 <div>
-                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400">
-                    <Sun className="w-3 h-3 text-amber-400" />
-                    <span>AM</span>
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400 font-medium">
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Daytime</span>
                   </div>
                   <input
                     type="text"
@@ -431,11 +433,11 @@ export const SundayWizardModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* PM */}
+                {/* Evening */}
                 <div className="pt-1">
-                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400">
-                    <Moon className="w-3 h-3 text-indigo-400" />
-                    <span>PM</span>
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] text-stone-400 font-medium">
+                    <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Evening</span>
                   </div>
                   <input
                     type="text"
@@ -496,8 +498,8 @@ export const SundayWizardModal: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1">
                       {[
-                        { id: 'partner1', label: p1.shortName },
-                        { id: 'partner2', label: p2.shortName },
+                        { id: 'partner1', label: p1Short },
+                        { id: 'partner2', label: p2Short },
                         { id: 'both', label: 'Both' },
                         { id: 'takeaway', label: 'Takeaway' },
                         { id: 'eating_out', label: 'Out' },

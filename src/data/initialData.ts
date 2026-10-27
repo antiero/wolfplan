@@ -1,4 +1,9 @@
 import { DaySchedule, Recipe, AppSettings, NotificationItem } from '../types';
+import { getWeekDates } from '../utils/dates';
+
+const initialWeekDates = getWeekDates();
+const getDateStrFor = (day: string, fallback: string) =>
+  initialWeekDates.find((w) => w.day === day)?.dateStr || fallback;
 
 export const INITIAL_RECIPES: Recipe[] = [
   {
@@ -127,7 +132,7 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     day: 'monday',
     dayLabel: 'Monday',
     shortLabel: 'Mon',
-    dateStr: 'Oct 19',
+    dateStr: getDateStrFor('monday', 'Oct 26'),
     partner1: {
       am: { activity: 'Gym & WFH', workLocation: 'wfh', wolfyDuty: true },
       pm: { activity: 'WFH', workLocation: 'wfh', wolfyDuty: false },
@@ -148,7 +153,7 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     day: 'tuesday',
     dayLabel: 'Tuesday',
     shortLabel: 'Tue',
-    dateStr: 'Oct 20',
+    dateStr: getDateStrFor('tuesday', 'Oct 27'),
     partner1: {
       am: { activity: 'Office', workLocation: 'office', wolfyDuty: false },
       pm: { activity: 'Out with workmates', workLocation: 'office', wolfyDuty: false },
@@ -170,7 +175,7 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     day: 'wednesday',
     dayLabel: 'Wednesday',
     shortLabel: 'Wed',
-    dateStr: 'Oct 21',
+    dateStr: getDateStrFor('wednesday', 'Oct 28'),
     partner1: {
       am: { activity: 'WFH', workLocation: 'wfh', wolfyDuty: true },
       pm: { activity: 'Home & Wolfy walk', workLocation: 'wfh', wolfyDuty: true },
@@ -191,7 +196,7 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     day: 'thursday',
     dayLabel: 'Thursday',
     shortLabel: 'Thu',
-    dateStr: 'Oct 22',
+    dateStr: getDateStrFor('thursday', 'Oct 29'),
     partner1: {
       am: { activity: 'Office', workLocation: 'office', wolfyDuty: false },
       pm: { activity: 'Home', workLocation: 'office', wolfyDuty: true },
@@ -213,7 +218,7 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     day: 'friday',
     dayLabel: 'Friday',
     shortLabel: 'Fri',
-    dateStr: 'Oct 23',
+    dateStr: getDateStrFor('friday', 'Oct 30'),
     partner1: {
       am: { activity: 'WFH', workLocation: 'wfh', wolfyDuty: true },
       pm: { activity: 'Relax & wine', workLocation: 'wfh', wolfyDuty: true },
@@ -234,7 +239,7 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     day: 'saturday',
     dayLabel: 'Saturday',
     shortLabel: 'Sat',
-    dateStr: 'Oct 24',
+    dateStr: getDateStrFor('saturday', 'Oct 31'),
     weekendVibes: {
       enabled: true,
       mood: 'chill_reset',
@@ -264,7 +269,7 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     day: 'sunday',
     dayLabel: 'Sunday',
     shortLabel: 'Sun',
-    dateStr: 'Oct 25',
+    dateStr: getDateStrFor('sunday', 'Nov 1'),
     weekendVibes: {
       enabled: true,
       mood: 'outdoors_dog',
@@ -327,9 +332,9 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     id: 'notif-1',
     timestamp: Date.now() - 1000 * 60 * 15,
     authorId: 'partner2',
-    authorName: 'Alex',
+    authorName: 'Beth',
     title: 'Tuesday Update',
-    message: 'Added Pilates in the PM.',
+    message: 'Added Pilates in the evening.',
     type: 'schedule_update',
     read: false,
     day: 'tuesday',

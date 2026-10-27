@@ -51,6 +51,7 @@ export const GoogleCalendarSyncModal: React.FC = () => {
   const [showConfirmImport, setShowConfirmImport] = useState(false);
 
   const currentUser = activeUser === 'partner1' ? settings.partner1 : settings.partner2;
+  const currentUserName = currentUser.name === 'Alex' ? (activeUser === 'partner1' ? 'Antony' : 'Beth') : (currentUser.name || (activeUser === 'partner1' ? 'Antony' : 'Beth'));
 
   // Load calendar events when modal opens if token is present
   useEffect(() => {
@@ -238,7 +239,7 @@ export const GoogleCalendarSyncModal: React.FC = () => {
                       Sync to Google Calendar
                     </span>
                     <p className="text-xs text-stone-400 leading-relaxed">
-                      Creates Google Calendar events for {currentUser.name}'s AM, PM, and dinner blocks for the week ahead.
+                      Creates Google Calendar events for {currentUserName}'s Daytime, Evening, and dinner blocks for the week ahead.
                     </p>
                   </div>
 
@@ -269,7 +270,7 @@ export const GoogleCalendarSyncModal: React.FC = () => {
                       Import from Google Calendar
                     </span>
                     <p className="text-xs text-stone-400 leading-relaxed">
-                      Reads meetings and appointments from your Google Calendar and suggests rough AM / PM blocks.
+                      Reads meetings and appointments from your Google Calendar and suggests rough Daytime / Evening blocks.
                     </p>
                   </div>
 
@@ -294,7 +295,7 @@ export const GoogleCalendarSyncModal: React.FC = () => {
                         Confirm Google Calendar Sync
                       </h4>
                       <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                        Are you sure you want to add this week's AM, PM, and dinner events for <strong>{currentUser.name}</strong> to your primary Google Calendar? New calendar events will be created.
+                        Are you sure you want to add this week's Daytime, Evening, and dinner events for <strong>{currentUserName}</strong> to your primary Google Calendar? New calendar events will be created.
                       </p>
                     </div>
                   </div>
@@ -326,7 +327,7 @@ export const GoogleCalendarSyncModal: React.FC = () => {
                         Confirm Calendar Import
                       </h4>
                       <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                        This will populate {currentUser.name}'s AM and PM routine blocks based on {events.length} events found on your Google Calendar for this week. Proceed?
+                        This will populate {currentUserName}'s Daytime and Evening routine blocks based on {events.length} events found on your Google Calendar for this week. Proceed?
                       </p>
                     </div>
                   </div>

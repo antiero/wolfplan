@@ -100,7 +100,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
 
             <p className="text-xs text-stone-300 leading-relaxed">
-              Every Sunday night, Wolfy prompts both partners to drop in rough AM/PM blocks and dinner plans for the week ahead.
+              Every Sunday night, Wolfy prompts both partners to drop in rough Daytime & Evening blocks and dinner plans for the week ahead.
             </p>
 
             <div className="grid grid-cols-2 gap-3 pt-1">

@@ -33,6 +33,8 @@ export const DinnerPlanView: React.FC = () => {
 
   const p1 = settings.partner1;
   const p2 = settings.partner2;
+  const p1Name = p1.name === 'Alex' ? 'Antony' : (p1.name || 'Antony');
+  const p2Name = p2.name === 'Alex' ? 'Beth' : (p2.name || 'Beth');
 
   const filteredSchedule = schedule.filter((d) => {
     if (activeFilter === 'together') return d.dinner.type === 'together';
@@ -43,9 +45,9 @@ export const DinnerPlanView: React.FC = () => {
   const getCookInfo = (cook: CookAssignment) => {
     switch (cook) {
       case 'partner1':
-        return { label: `${p1.name} Cooking`, color: 'bg-amber-600/30 text-amber-300 border-amber-600/50' };
+        return { label: `${p1Name} Cooking`, color: 'bg-amber-600/30 text-amber-300 border-amber-600/50' };
       case 'partner2':
-        return { label: `${p2.name} Cooking`, color: 'bg-emerald-600/30 text-emerald-300 border-emerald-600/50' };
+        return { label: `${p2Name} Cooking`, color: 'bg-emerald-600/30 text-emerald-300 border-emerald-600/50' };
       case 'both':
         return { label: 'Both Cooking', color: 'bg-rose-950/50 text-rose-300 border-rose-800/50' };
       case 'takeaway':
@@ -290,7 +292,7 @@ export const DinnerPlanView: React.FC = () => {
                           <span className={`w-3.5 h-3.5 rounded-full ${p1.avatarBg} text-[8px] text-white flex items-center justify-center`}>
                             {p1.shortName.charAt(0)}
                           </span>
-                          <span>{p1.name}'s Dinner Plan:</span>
+                          <span>{p1Name}'s Dinner Plan:</span>
                         </div>
                         <p className="text-xs font-medium text-stone-200">
                           {dayItem.dinner.partner1OwnDinner || 'Solo meal / fend for self'}
@@ -302,7 +304,7 @@ export const DinnerPlanView: React.FC = () => {
                           <span className={`w-3.5 h-3.5 rounded-full ${p2.avatarBg} text-[8px] text-white flex items-center justify-center`}>
                             {p2.shortName.charAt(0)}
                           </span>
-                          <span>{p2.name}'s Dinner Plan:</span>
+                          <span>{p2Name}'s Dinner Plan:</span>
                         </div>
                         <p className="text-xs font-medium text-stone-200">
                           {dayItem.dinner.partner2OwnDinner || 'Solo meal / fend for self'}
@@ -355,8 +357,8 @@ export const DinnerPlanView: React.FC = () => {
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5">
                           {[
-                            { id: 'partner1', label: p1.name },
-                            { id: 'partner2', label: p2.name },
+                            { id: 'partner1', label: p1Name },
+                            { id: 'partner2', label: p2Name },
                             { id: 'both', label: 'Both Together' },
                             { id: 'takeaway', label: 'Takeaway' },
                             { id: 'eating_out', label: 'Eating Out' },
@@ -441,7 +443,7 @@ export const DinnerPlanView: React.FC = () => {
                     <div className="space-y-3">
                       <div>
                         <label className="text-xs font-semibold text-amber-300 block mb-1">
-                          {p1.name}'s Meal / Plan:
+                          {p1Name}'s Meal / Plan:
                         </label>
                         <input
                           type="text"
@@ -453,7 +455,7 @@ export const DinnerPlanView: React.FC = () => {
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-emerald-300 block mb-1">
-                          {p2.name}'s Meal / Plan:
+                          {p2Name}'s Meal / Plan:
                         </label>
                         <input
                           type="text"

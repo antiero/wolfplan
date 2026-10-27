@@ -47,11 +47,14 @@ export const UserProfileModal: React.FC = () => {
   const [selectedPartnerId, setSelectedPartnerId] = useState<PartnerId>(activeUser);
   const currentProfile = selectedPartnerId === 'partner1' ? settings.partner1 : settings.partner2;
 
-  const [name, setName] = useState(currentProfile.name);
-  const [shortName, setShortName] = useState(currentProfile.shortName);
+  const defaultName = selectedPartnerId === 'partner1' ? 'Antony' : 'Beth';
+  const defaultShort = selectedPartnerId === 'partner1' ? 'Ant' : 'Beth';
+
+  const [name, setName] = useState(currentProfile.name === 'Alex' ? defaultName : (currentProfile.name || defaultName));
+  const [shortName, setShortName] = useState(currentProfile.shortName === 'Alex' ? defaultShort : (currentProfile.shortName || defaultShort));
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(currentProfile.photoUrl);
   const [avatarEmoji, setAvatarEmoji] = useState<string | undefined>(currentProfile.avatarEmoji);
-  const [avatarBg, setAvatarBg] = useState(currentProfile.avatarBg || 'bg-emerald-600');
+  const [avatarBg, setAvatarBg] = useState(currentProfile.avatarBg || (selectedPartnerId === 'partner1' ? 'bg-amber-600' : 'bg-emerald-600'));
   const [favoriteDinnerEmoji, setFavoriteDinnerEmoji] = useState(currentProfile.favoriteDinnerEmoji || '🍣');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -61,8 +64,10 @@ export const UserProfileModal: React.FC = () => {
   // Sync state when selectedPartnerId or settings change
   useEffect(() => {
     const prof = selectedPartnerId === 'partner1' ? settings.partner1 : settings.partner2;
-    setName(prof.name);
-    setShortName(prof.shortName);
+    const defName = selectedPartnerId === 'partner1' ? 'Antony' : 'Beth';
+    const defShort = selectedPartnerId === 'partner1' ? 'Ant' : 'Beth';
+    setName(prof.name === 'Alex' ? defName : (prof.name || defName));
+    setShortName(prof.shortName === 'Alex' ? defShort : (prof.shortName || defShort));
     setPhotoUrl(prof.photoUrl);
     setAvatarEmoji(prof.avatarEmoji);
     setAvatarBg(prof.avatarBg || (selectedPartnerId === 'partner1' ? 'bg-amber-600' : 'bg-emerald-600'));

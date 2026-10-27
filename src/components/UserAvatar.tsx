@@ -22,8 +22,12 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 }) => {
   const [imageError, setImageError] = useState(false);
 
-  const displayName = profile?.name || name || 'User';
-  const displayShort = profile?.shortName || displayName.slice(0, 4) || 'U';
+  let displayName = profile?.name || name || 'User';
+  let displayShort = profile?.shortName || displayName.slice(0, 4) || 'U';
+  if (displayName === 'Alex' || displayShort === 'Alex') {
+    displayName = profile?.id === 'partner1' ? 'Antony' : 'Beth';
+    displayShort = profile?.id === 'partner1' ? 'Ant' : 'Beth';
+  }
   const initial = displayShort.charAt(0).toUpperCase();
   const avatarBg = profile?.avatarBg || 'bg-amber-600';
   const effectivePhoto = !imageError ? (photoUrl || profile?.photoUrl) : undefined;
