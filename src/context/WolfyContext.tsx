@@ -9,6 +9,7 @@ import {
   ScheduleBlock,
   DinnerPlan,
   WeekendVibesPlan,
+  AssignedTask,
 } from '../types';
 import {
   INITIAL_SCHEDULE,
@@ -60,6 +61,9 @@ interface WolfyContextType {
   isInviteModalOpen: boolean;
   isCalendarModalOpen: boolean;
   isProfileModalOpen: boolean;
+  isBriefingModalOpen: boolean;
+  isAssignTaskModalOpen: boolean;
+  assignTaskInitialDay: DayOfWeek;
   selectedRecipeModal: Recipe | null;
   unreadCount: number;
 
@@ -77,6 +81,10 @@ interface WolfyContextType {
   setIsInviteModalOpen: (open: boolean) => void;
   setIsCalendarModalOpen: (open: boolean) => void;
   setIsProfileModalOpen: (open: boolean) => void;
+  setIsBriefingModalOpen: (open: boolean) => void;
+  setIsAssignTaskModalOpen: (open: boolean) => void;
+  setAssignTaskInitialDay: (day: DayOfWeek) => void;
+  openAssignTaskModal: (day?: DayOfWeek) => void;
   setSelectedRecipeModal: (recipe: Recipe | null) => void;
 
   loginWithGoogle: () => Promise<void>;
@@ -86,6 +94,10 @@ interface WolfyContextType {
   updateDinnerPlan: (day: DayOfWeek, update: Partial<DinnerPlan>) => void;
   updateWeekendVibes: (day: DayOfWeek, update: Partial<WeekendVibesPlan>) => void;
   saveFullDayRoutine: (day: DayOfWeek, p1Am: ScheduleBlock, p1Pm: ScheduleBlock, p2Am: ScheduleBlock, p2Pm: ScheduleBlock, dinner: DinnerPlan) => void;
+  assignTask: (task: Omit<AssignedTask, 'id' | 'createdAt' | 'completed'> & { completed?: boolean }) => void;
+  toggleTaskCompleted: (day: DayOfWeek, taskId: string) => void;
+  deleteTask: (day: DayOfWeek, taskId: string) => void;
+  setWolfyDutyQuick: (day: DayOfWeek, assignedPartnerId: PartnerId, period?: 'am' | 'pm' | 'both') => void;
   
   hasCompletedFirstWeek: boolean;
   previousWeekSchedule: DaySchedule[] | null;
@@ -274,7 +286,31 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
+  const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
+  const [assignTaskInitialDay, setAssignTaskInitialDay] = useState<DayOfWeek>(todayDayName);
   const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
+
+  const openAssignTaskModal = useCallback((day?: DayOfWeek) => {
+    if (day) setAssignTaskInitialDay(day);
+    setIsAssignTaskModalOpen(true);
+  }, []);
+
+  // Show Daily Briefing popup on startup once per browser session
+  useEffect(() => {
+    try {
+      const hasSeenBriefing = sessionStorage.getItem('wolfy_briefing_session_shown');
+      if (!hasSeenBriefing && settings.dailyBriefingPopupEnabled !== false) {
+        sessionStorage.setItem('wolfy_briefing_session_shown', 'true');
+        const timer = setTimeout(() => {
+          setIsBriefingModalOpen(true);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }, [settings.dailyBriefingPopupEnabled]);
 
   // Auth & Cloud sync states
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -708,12 +744,32 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           funTags: [],
           noAlarm: true,
         };
+        const updatedVibes = {
+          ...currentVibes,
+          ...update,
+        };
+
+        // Marry Weekend Vibes with Weekly Planning blocks to prevent double manual entry
+        const updatedPartner1 = { ...d.partner1 };
+        const updatedPartner2 = { ...d.partner2 };
+        
+        if (update.morningVibe !== undefined && update.morningVibe.trim()) {
+          updatedPartner1.am = { ...updatedPartner1.am, activity: update.morningVibe.trim() };
+          updatedPartner2.am = { ...updatedPartner2.am, activity: update.morningVibe.trim() };
+        }
+        if (update.eveningVibe !== undefined && update.eveningVibe.trim()) {
+          updatedPartner1.pm = { ...updatedPartner1.pm, activity: update.eveningVibe.trim() };
+          updatedPartner2.pm = { ...updatedPartner2.pm, activity: update.eveningVibe.trim() };
+        }
+        if (update.wolfyAdventure !== undefined && update.wolfyAdventure.trim()) {
+          updatedPartner1.am = { ...updatedPartner1.am, wolfyDuty: true };
+        }
+
         const updatedDoc = {
           ...d,
-          weekendVibes: {
-            ...currentVibes,
-            ...update,
-          },
+          weekendVibes: updatedVibes,
+          partner1: updatedPartner1,
+          partner2: updatedPartner2,
         };
         updatedDayDoc = updatedDoc;
         return updatedDoc;
@@ -726,7 +782,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         authorId: activeUser,
         authorName,
         title: `${authorName} updated ${dayLabel} Weekend Vibes 🥂`,
-        message: `New casual weekend plans & fun activities added!`,
+        message: `Weekend plans & routine synchronized for ${dayLabel}!`,
         type: 'schedule_update',
         day,
       });
@@ -778,6 +834,172 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       broadcastChange('SCHEDULE_UPDATE', next, `${authorName} synced ${dayLabel}`);
 
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
+      return next;
+    });
+  }, [activeUser, settings, addNotification]);
+
+  const assignTask = useCallback((taskData: Omit<AssignedTask, 'id' | 'createdAt' | 'completed'> & { completed?: boolean }) => {
+    const newTask: AssignedTask = {
+      ...taskData,
+      id: 'task-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      createdAt: Date.now(),
+      completed: !!taskData.completed,
+    };
+
+    setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
+      const next = prev.map((d) => {
+        if (d.day !== taskData.day) return d;
+        const currentTasks = d.assignedTasks || [];
+        const updatedDoc = {
+          ...d,
+          assignedTasks: [...currentTasks, newTask],
+        };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
+      });
+
+      const senderName = activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name;
+      const recipientName = taskData.assignedTo === 'partner1' ? settings.partner1.name : settings.partner2.name;
+      const dayLabel = taskData.day.charAt(0).toUpperCase() + taskData.day.slice(1);
+      const timeText = taskData.time ? ` at ${taskData.time}` : '';
+
+      addNotification({
+        authorId: activeUser,
+        authorName: senderName,
+        title: `Task assigned to ${recipientName} 📌`,
+        message: `${senderName} assigned "${taskData.title}" for ${dayLabel}${timeText}`,
+        type: 'task_assigned',
+        day: taskData.day,
+      });
+
+      broadcastChange('SCHEDULE_UPDATE', next, `${senderName} assigned a task for ${dayLabel}`);
+
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
+      return next;
+    });
+  }, [activeUser, settings, addNotification]);
+
+  const toggleTaskCompleted = useCallback((day: DayOfWeek, taskId: string) => {
+    setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
+      let completedNow = false;
+      let taskTitle = '';
+
+      const next = prev.map((d) => {
+        if (d.day !== day) return d;
+        const tasks = (d.assignedTasks || []).map((t) => {
+          if (t.id === taskId) {
+            const nextState = !t.completed;
+            completedNow = nextState;
+            taskTitle = t.title;
+            return {
+              ...t,
+              completed: nextState,
+              completedAt: nextState ? Date.now() : undefined,
+            };
+          }
+          return t;
+        });
+        const updatedDoc = { ...d, assignedTasks: tasks };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
+      });
+
+      if (completedNow) {
+        playChime('success');
+        const authorName = activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name;
+        addNotification({
+          authorId: activeUser,
+          authorName,
+          title: `Task completed! ✅`,
+          message: `${authorName} completed "${taskTitle}"`,
+          type: 'task_completed',
+          day,
+        });
+      }
+
+      broadcastChange('SCHEDULE_UPDATE', next, `Task status updated`);
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
+      return next;
+    });
+  }, [activeUser, settings, addNotification]);
+
+  const deleteTask = useCallback((day: DayOfWeek, taskId: string) => {
+    setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
+      const next = prev.map((d) => {
+        if (d.day !== day) return d;
+        const tasks = (d.assignedTasks || []).filter((t) => t.id !== taskId);
+        const updatedDoc = { ...d, assignedTasks: tasks };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
+      });
+
+      broadcastChange('SCHEDULE_UPDATE', next, `Task removed`);
+      if (updatedDayDoc) {
+        saveScheduleDoc(settings.pairCode, updatedDayDoc);
+        setLastCloudSync(new Date());
+      }
+
+      return next;
+    });
+  }, [settings]);
+
+  const setWolfyDutyQuick = useCallback((day: DayOfWeek, assignedPartnerId: PartnerId, period?: 'am' | 'pm' | 'both') => {
+    setSchedule((prev) => {
+      let updatedDayDoc: DaySchedule | null = null;
+      const next = prev.map((d) => {
+        if (d.day !== day) return d;
+        const otherPartnerId: PartnerId = assignedPartnerId === 'partner1' ? 'partner2' : 'partner1';
+
+        const p1 = { ...d[assignedPartnerId] };
+        const p2 = { ...d[otherPartnerId] };
+
+        if (!period || period === 'both' || period === 'am') {
+          p1.am = { ...p1.am, wolfyDuty: true };
+          p2.am = { ...p2.am, wolfyDuty: false };
+        }
+        if (!period || period === 'both' || period === 'pm') {
+          p1.pm = { ...p1.pm, wolfyDuty: true };
+          p2.pm = { ...p2.pm, wolfyDuty: false };
+        }
+
+        const updatedDoc = {
+          ...d,
+          [assignedPartnerId]: p1,
+          [otherPartnerId]: p2,
+        };
+        updatedDayDoc = updatedDoc;
+        return updatedDoc;
+      });
+
+      const assignedName = assignedPartnerId === 'partner1' ? settings.partner1.name : settings.partner2.name;
+      const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
+
+      addNotification({
+        authorId: activeUser,
+        authorName: activeUser === 'partner1' ? settings.partner1.name : settings.partner2.name,
+        title: `Wolfy Care assigned 🐾`,
+        message: `${assignedName} is responsible for Wolfy on ${dayLabel}${period && period !== 'both' ? ` (${period.toUpperCase()})` : ''}`,
+        type: 'schedule_update',
+        day,
+      });
+
+      broadcastChange('SCHEDULE_UPDATE', next, `Wolfy care updated for ${dayLabel}`);
       if (updatedDayDoc) {
         saveScheduleDoc(settings.pairCode, updatedDayDoc);
         setLastCloudSync(new Date());
@@ -1024,6 +1246,9 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isInviteModalOpen,
         isCalendarModalOpen,
         isProfileModalOpen,
+        isBriefingModalOpen,
+        isAssignTaskModalOpen,
+        assignTaskInitialDay,
         selectedRecipeModal,
         unreadCount,
 
@@ -1040,6 +1265,10 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsInviteModalOpen,
         setIsCalendarModalOpen,
         setIsProfileModalOpen,
+        setIsBriefingModalOpen,
+        setIsAssignTaskModalOpen,
+        setAssignTaskInitialDay,
+        openAssignTaskModal,
         setSelectedRecipeModal,
 
         loginWithGoogle,
@@ -1049,6 +1278,10 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateDinnerPlan,
         updateWeekendVibes,
         saveFullDayRoutine,
+        assignTask,
+        toggleTaskCompleted,
+        deleteTask,
+        setWolfyDutyQuick,
         hasCompletedFirstWeek,
         previousWeekSchedule,
         populateFromPreviousWeek,

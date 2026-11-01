@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useWolfy } from '../context/WolfyContext';
-import { DayOfWeek, PartnerId, ScheduleBlock, WorkLocation } from '../types';
+import { DayOfWeek, PartnerId, ScheduleBlock, WorkLocation, TimedActivity } from '../types';
 import { COMMON_AM_CHIPS, COMMON_PM_CHIPS } from '../data/initialData';
-import { X, PawPrint, Check, Building, Laptop, Plane, Sun } from 'lucide-react';
+import { X, PawPrint, Check, Building, Laptop, Plane, Sun, Clock, Plus, Trash2 } from 'lucide-react';
 import { WolfyAvatar } from './WolfyAvatar';
 
 interface EditBlockModalProps {
@@ -25,6 +25,9 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
   const [workLocation, setWorkLocation] = useState<WorkLocation>(initialBlock.workLocation || 'wfh');
   const [notes, setNotes] = useState(initialBlock.notes || '');
   const [wolfyDuty, setWolfyDuty] = useState(!!initialBlock.wolfyDuty);
+  const [timedActivities, setTimedActivities] = useState<TimedActivity[]>(initialBlock.timedActivities || []);
+  const [newTime, setNewTime] = useState(period === 'am' ? '9:00 AM' : '6:00 PM');
+  const [newTimedText, setNewTimedText] = useState('');
 
   const partner = partnerId === 'partner1' ? settings.partner1 : settings.partner2;
   const partnerName = partner.name === 'Alex' ? (partnerId === 'partner1' ? 'Antony' : 'Beth') : (partner.name || (partnerId === 'partner1' ? 'Antony' : 'Beth'));
@@ -34,12 +37,36 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
   const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
   const periodLabel = period === 'am' ? 'Daytime' : 'Evening';
 
+  const timePills = period === 'am'
+    ? ['8:30 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM']
+    : ['1:00 PM', '2:30 PM', '4:00 PM', '5:30 PM', '6:30 PM', '8:00 PM'];
+
+  const timedPresets = period === 'am'
+    ? ['9am Dr appt', '10am Get chicken out of freezer', '11am Team standup', '8:30am School drop-off']
+    : ['4pm Pick up child from school', '5:30pm Vet appointment', '6:30pm Pilates / Gym', '8pm Dinner booking'];
+
+  const handleAddTimed = () => {
+    if (!newTimedText.trim()) return;
+    const item: TimedActivity = {
+      id: 'timed-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      time: newTime,
+      text: newTimedText.trim(),
+    };
+    setTimedActivities([...timedActivities, item]);
+    setNewTimedText('');
+  };
+
+  const handleRemoveTimed = (id: string) => {
+    setTimedActivities(timedActivities.filter((t) => t.id !== id));
+  };
+
   const handleSave = () => {
     updateScheduleBlock(day, partnerId, period, {
       activity: activity.trim() || 'Free / Flexible',
       workLocation,
       notes: notes.trim(),
       wolfyDuty,
+      timedActivities,
     });
     onClose();
   };
@@ -161,6 +188,132 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
             >
               {wolfyDuty ? 'Assigned 🐾' : 'Not Assigned'}
             </button>
+          </div>
+
+          {/* Time-Bound Activities (Specific Timings) */}
+          <div className="p-3.5 rounded-2xl bg-stone-950/70 border border-stone-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Specific Timings & Appointments</span>
+                </label>
+                <p className="text-[11px] text-stone-400">
+                  e.g. 9am dr appt, 10am get chicken out of the freezer
+                </p>
+              </div>
+              <span className="text-[10px] text-stone-500 font-mono">
+                {timedActivities.length} set
+              </span>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex flex-wrap gap-1.5">
+              {timedPresets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    const parts = preset.split(' ');
+                    const t = parts[0];
+                    const rest = parts.slice(1).join(' ');
+                    setTimedActivities([
+                      ...timedActivities,
+                      {
+                        id: 'timed-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                        time: t.toUpperCase(),
+                        text: rest,
+                      },
+                    ]);
+                  }}
+                  className="text-[11px] px-2 py-0.5 rounded-md bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-800 transition-colors"
+                >
+                  + {preset}
+                </button>
+              ))}
+            </div>
+
+            {/* Input Row */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  placeholder="Time"
+                  className="w-24 px-2.5 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden font-medium"
+                />
+              </div>
+
+              <div className="flex-1 flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={newTimedText}
+                  onChange={(e) => setNewTimedText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTimed();
+                    }
+                  }}
+                  placeholder="Event / Reminder (e.g. Dr appt, Defrost food)"
+                  className="flex-1 px-3 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTimed}
+                  disabled={!newTimedText.trim()}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Time Pills */}
+            <div className="flex flex-wrap gap-1">
+              {timePills.map((pill) => (
+                <button
+                  key={pill}
+                  type="button"
+                  onClick={() => setNewTime(pill)}
+                  className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+                    newTime === pill
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500'
+                      : 'bg-stone-900/60 text-stone-400 border-stone-800'
+                  }`}
+                >
+                  {pill}
+                </button>
+              ))}
+            </div>
+
+            {/* Current Timed Activities List */}
+            {timedActivities.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {timedActivities.map((act) => (
+                  <div
+                    key={act.id}
+                    className="flex items-center justify-between p-2 rounded-xl bg-stone-900 border border-stone-800 text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 font-semibold text-[10px] shrink-0">
+                        {act.time}
+                      </span>
+                      <span className="font-medium text-stone-200 truncate">{act.text}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTimed(act.id)}
+                      className="p-1 text-stone-500 hover:text-rose-400"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Additional Notes */}

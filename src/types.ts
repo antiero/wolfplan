@@ -13,11 +13,19 @@ export interface PartnerProfile {
 
 export type WorkLocation = 'wfh' | 'office' | 'travel' | 'off';
 
+export interface TimedActivity {
+  id: string;
+  time: string; // e.g. "9:00 AM", "10:00 AM", "4:00 PM"
+  text: string; // e.g. "Dr appointment", "Get chicken out of freezer"
+  completed?: boolean;
+}
+
 export interface ScheduleBlock {
   activity: string;
   workLocation?: WorkLocation;
   notes?: string;
   wolfyDuty?: boolean; // Walking or caring for Wolfy
+  timedActivities?: TimedActivity[];
 }
 
 export type DinnerType = 'together' | 'separate';
@@ -71,6 +79,20 @@ export interface WeekendVibesPlan {
   notes?: string;
 }
 
+export interface AssignedTask {
+  id: string;
+  day: DayOfWeek;
+  time?: string; // e.g. "4:00 PM", "9:00 AM"
+  title: string; // e.g. "Pick up child from school"
+  assignedTo: PartnerId; // e.g. 'partner2' (Beth)
+  assignedBy: PartnerId; // e.g. 'partner1' (Antony)
+  completed: boolean;
+  completedAt?: number;
+  category?: 'school' | 'errand' | 'wolfy' | 'groceries' | 'appointment' | 'general';
+  notes?: string;
+  createdAt: number;
+}
+
 export interface DaySchedule {
   day: DayOfWeek;
   dayLabel: string;
@@ -87,6 +109,7 @@ export interface DaySchedule {
     pm: ScheduleBlock;
   };
   dinner: DinnerPlan;
+  assignedTasks?: AssignedTask[];
 }
 
 export interface NotificationItem {
@@ -96,7 +119,7 @@ export interface NotificationItem {
   authorName: string;
   title: string;
   message: string;
-  type: 'schedule_update' | 'dinner_update' | 'sunday_reminder' | 'nudge';
+  type: 'schedule_update' | 'dinner_update' | 'sunday_reminder' | 'nudge' | 'task_assigned' | 'task_completed';
   read: boolean;
   day?: DayOfWeek;
 }
@@ -115,4 +138,5 @@ export interface AppSettings {
   cloudSyncEnabled?: boolean;
   hasCompletedFirstWeek?: boolean;
   previousWeekSchedule?: DaySchedule[];
+  dailyBriefingPopupEnabled?: boolean;
 }

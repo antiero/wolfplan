@@ -12,6 +12,8 @@ import { InvitePartnerModal } from './components/InvitePartnerModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { GoogleCalendarSyncModal } from './components/GoogleCalendarSyncModal';
+import { DailyBriefingModal } from './components/DailyBriefingModal';
+import { AssignTaskModal } from './components/AssignTaskModal';
 import { BottomNav } from './components/BottomNav';
 import { WolfyAvatar } from './components/WolfyAvatar';
 import { Sliders, CalendarCheck, Utensils, Heart } from 'lucide-react';
@@ -82,6 +84,8 @@ const MainAppContent: React.FC = () => {
 
       {/* All Shared Modals */}
       <SundayWizardModal />
+      <DailyBriefingModal />
+      <AssignTaskModal />
       <RecipeModal />
       <InvitePartnerModal />
       <UserProfileModal />

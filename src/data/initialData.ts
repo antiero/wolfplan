@@ -124,6 +124,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   activeViewPartner: 'both',
   pairCode: 'WOLFY-JACK-RUSSELL-77',
   hasCompletedFirstWeek: true, // enables 2nd run copy prompt
+  dailyBriefingPopupEnabled: true,
 };
 
 // Calm, uncluttered initial schedule
@@ -134,7 +135,15 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     shortLabel: 'Mon',
     dateStr: getDateStrFor('monday', 'Oct 26'),
     partner1: {
-      am: { activity: 'Gym & WFH', workLocation: 'wfh', wolfyDuty: true },
+      am: {
+        activity: 'Gym & WFH',
+        workLocation: 'wfh',
+        wolfyDuty: true,
+        timedActivities: [
+          { id: 'time-1', time: '9:00 AM', text: 'Dr appointment', completed: false },
+          { id: 'time-2', time: '10:00 AM', text: 'Get chicken out of freezer', completed: true },
+        ],
+      },
       pm: { activity: 'WFH', workLocation: 'wfh', wolfyDuty: false },
     },
     partner2: {
@@ -213,6 +222,19 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
       partner1OwnDinner: 'Toasted sourdough & soup',
       partner2OwnDinner: 'Dinner with friend',
     },
+    assignedTasks: [
+      {
+        id: 'task-1',
+        day: 'thursday',
+        time: '4:00 PM',
+        title: 'Pick up child from school',
+        assignedTo: 'partner2',
+        assignedBy: 'partner1',
+        completed: false,
+        category: 'school',
+        createdAt: Date.now() - 3600000,
+      },
+    ],
   },
   {
     day: 'friday',
@@ -315,6 +337,7 @@ export const BLANK_SCHEDULE_TEMPLATE: DaySchedule[] = INITIAL_SCHEDULE.map((day)
     mealName: '',
     tags: [],
   },
+  assignedTasks: [],
   weekendVibes: day.weekendVibes
     ? {
         ...day.weekendVibes,

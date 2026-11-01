@@ -14,10 +14,13 @@ import {
   Sun,
   Moon,
   ArrowRight,
+  AlertTriangle,
+  Clock,
 } from 'lucide-react';
-import { DayOfWeek, DaySchedule, ScheduleBlock, DinnerPlan, CookAssignment } from '../types';
+import { DayOfWeek, DaySchedule, ScheduleBlock, DinnerPlan, CookAssignment, WeekendMood, WeekendVibesPlan } from '../types';
 import { COMMON_AM_CHIPS, COMMON_PM_CHIPS } from '../data/initialData';
 import { playChime } from '../utils/sound';
+import { detectDayClashes } from '../utils/clashDetector';
 
 export const SundayWizardModal: React.FC = () => {
   const {
@@ -27,6 +30,7 @@ export const SundayWizardModal: React.FC = () => {
     isSundayWizardOpen,
     setIsSundayWizardOpen,
     saveFullDayRoutine,
+    updateWeekendVibes,
     hasCompletedFirstWeek,
     previousWeekSchedule,
     archiveCurrentWeekAsPrevious,
@@ -161,9 +165,46 @@ export const SundayWizardModal: React.FC = () => {
     );
   };
 
+  const updateCurrentDayWeekendVibes = (update: Partial<WeekendVibesPlan>) => {
+    setLocalSchedule((prev) =>
+      prev.map((d, idx) => {
+        if (idx !== currentDayIndex) return d;
+        const current = d.weekendVibes || {
+          enabled: true,
+          mood: 'chill_reset',
+          morningVibe: '',
+          afternoonPlan: '',
+          eveningVibe: '',
+          funTags: [],
+          noAlarm: true,
+        };
+        const merged = { ...current, ...update };
+        const p1 = { ...d.partner1 };
+        const p2 = { ...d.partner2 };
+        if (update.morningVibe !== undefined && update.morningVibe.trim()) {
+          p1.am = { ...p1.am, activity: update.morningVibe.trim() };
+          p2.am = { ...p2.am, activity: update.morningVibe.trim() };
+        }
+        if (update.eveningVibe !== undefined && update.eveningVibe.trim()) {
+          p1.pm = { ...p1.pm, activity: update.eveningVibe.trim() };
+          p2.pm = { ...p2.pm, activity: update.eveningVibe.trim() };
+        }
+        return {
+          ...d,
+          weekendVibes: merged,
+          partner1: p1,
+          partner2: p2,
+        };
+      })
+    );
+  };
+
   const handleFinishWizard = () => {
     localSchedule.forEach((d) => {
       saveFullDayRoutine(d.day, d.partner1.am, d.partner1.pm, d.partner2.am, d.partner2.pm, d.dinner);
+      if (d.weekendVibes) {
+        updateWeekendVibes(d.day, d.weekendVibes);
+      }
     });
     archiveCurrentWeekAsPrevious();
     playChime('sunday');
@@ -546,6 +587,112 @@ export const SundayWizardModal: React.FC = () => {
                   </div>
                 )}
               </div>
+              {/* Weekend Vibes Integration for Saturday & Sunday */}
+              {(currentDay.day === 'saturday' || currentDay.day === 'sunday') && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-950/40 via-stone-900 to-stone-950 border border-amber-800/40 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{currentDay.dayLabel} Weekend Vibes</span>
+                    </span>
+                    <span className="text-[10px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      Auto-syncs with routine
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-stone-300 leading-relaxed">
+                    Set your weekend mood and plans once — Wolfy automatically synchronizes them to both of your daily routine blocks!
+                  </p>
+
+                  {/* Mood Selector Chips */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+                    {[
+                      { id: 'chill_reset', label: '🛋️ Chill & Reset' },
+                      { id: 'outdoors_dog', label: '🌲 Wolfy Hike' },
+                      { id: 'social_party', label: '🎉 Social & Drinks' },
+                      { id: 'foodie_cozy', label: '🍷 Foodie / Roast' },
+                      { id: 'spontaneous', label: '✨ Spontaneous' },
+                    ].map((m) => {
+                      const isSelected = (currentDay.weekendVibes?.mood || 'chill_reset') === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => updateCurrentDayWeekendVibes({ mood: m.id as WeekendMood })}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition-colors text-left truncate ${
+                            isSelected
+                              ? 'bg-amber-500/25 text-amber-200 border-amber-500 font-bold'
+                              : 'bg-stone-950/70 text-stone-400 border-stone-800 hover:bg-stone-900'
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Morning & Evening Vibe Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <span className="text-[10px] text-stone-400 block mb-1">Morning / Daytime Vibe</span>
+                      <input
+                        type="text"
+                        value={currentDay.weekendVibes?.morningVibe || ''}
+                        onChange={(e) => updateCurrentDayWeekendVibes({ morningVibe: e.target.value })}
+                        placeholder="e.g. Sleep in, coffee & bakery run"
+                        className="w-full px-3 py-1.5 rounded-xl bg-stone-950 border border-stone-800 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-stone-400 block mb-1">Evening Vibe</span>
+                      <input
+                        type="text"
+                        value={currentDay.weekendVibes?.eveningVibe || ''}
+                        onChange={(e) => updateCurrentDayWeekendVibes({ eveningVibe: e.target.value })}
+                        placeholder="e.g. Sourdough pizza & film night"
+                        className="w-full px-3 py-1.5 rounded-xl bg-stone-950 border border-stone-800 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Real-time Clash / Conflict Detection Notice */}
+              {(() => {
+                const dayClashes = detectDayClashes(currentDay, settings);
+                if (dayClashes.length === 0) return null;
+                return (
+                  <div className="p-3 rounded-2xl bg-rose-950/30 border border-rose-800/50 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-rose-300">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Heads up: Potential Clash on {currentDay.dayLabel}</span>
+                    </div>
+                    {dayClashes.map((clash) => (
+                      <div key={clash.id} className="text-xs text-stone-200 pl-5 space-y-1">
+                        <p className="text-rose-200 text-[11px] leading-relaxed">{clash.message}</p>
+                        {clash.type === 'wolfy_uncovered' && (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => updateCurrentDayP1('am', 'wolfyDuty', true)}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-bold"
+                            >
+                              🐾 {p1Short} has Wolfy
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateCurrentDayP2('am', 'wolfyDuty', true)}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-bold"
+                            >
+                              🐾 {p2Short} has Wolfy
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Footer */}

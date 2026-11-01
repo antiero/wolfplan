@@ -310,6 +310,14 @@ export const WeekendVibesCard: React.FC<WeekendVibesCardProps> = ({ day, dateStr
             </button>
           </div>
 
+          {/* Auto-Sync with Weekly Routine notice */}
+          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Auto-synced with Weekly Routine:</strong> Setting morning & evening vibes here automatically updates daytime & evening cards for both of you—no double input needed!
+            </span>
+          </div>
+
           {/* Casual blocks inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>

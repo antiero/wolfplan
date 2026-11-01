@@ -28,6 +28,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [reminderDay, setReminderDay] = useState(settings.sundayReminderDay || 'sunday');
   const [reminderEnabled, setReminderEnabled] = useState(settings.sundayReminderEnabled);
   const [realtimeAlerts, setRealtimeAlerts] = useState(settings.realtimeAlerts);
+  const [dailyBriefingPopupEnabled, setDailyBriefingPopupEnabled] = useState(settings.dailyBriefingPopupEnabled !== false);
   const [p1Name, setP1Name] = useState(settings.partner1.name);
   const [p2Name, setP2Name] = useState(settings.partner2.name);
 
@@ -41,6 +42,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       sundayReminderDay: reminderDay,
       sundayReminderEnabled: reminderEnabled,
       realtimeAlerts,
+      dailyBriefingPopupEnabled,
       partner1: { ...settings.partner1, name: trimmed1, shortName: trimmed1.slice(0, 4) },
       partner2: { ...settings.partner2, name: trimmed2, shortName: trimmed2.slice(0, 4) },
     });
@@ -130,6 +132,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 />
               </div>
             </div>
+          </div>
+
+          {/* Daily Briefing Popup on Open */}
+          <div className="p-4 rounded-2xl bg-stone-950/60 border border-stone-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-stone-200 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                Startup Briefing & Sunday Ritual Popup
+              </span>
+              <input
+                type="checkbox"
+                checked={dailyBriefingPopupEnabled}
+                onChange={(e) => setDailyBriefingPopupEnabled(e.target.checked)}
+                className="rounded text-amber-500 focus:ring-amber-500 bg-stone-800 border-stone-700 w-4 h-4"
+              />
+            </div>
+            <p className="text-xs text-stone-400 leading-relaxed">
+              Show an opening pop-up to remind you to plan your week (on Sundays) or check today's couple schedule, dinner, and errands (on weekdays).
+            </p>
           </div>
 
           {/* Real-time Alerts */}

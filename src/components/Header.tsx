@@ -15,6 +15,7 @@ import {
   Calendar,
   User,
   Edit2,
+  Sun,
 } from 'lucide-react';
 import { PartnerId } from '../types';
 
@@ -30,6 +31,7 @@ export const Header: React.FC = () => {
     setIsInviteModalOpen,
     setIsCalendarModalOpen,
     setIsProfileModalOpen,
+    setIsBriefingModalOpen,
     simulatePartnerUpdate,
     authUser,
   } = useWolfy();
@@ -68,10 +70,20 @@ export const Header: React.FC = () => {
           {/* Google Sign in & Calendar Sync */}
           <GoogleAuthButton compact />
 
+          {/* Daily Briefing Button */}
+          <button
+            onClick={() => setIsBriefingModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-stone-850 hover:bg-stone-800 text-stone-200 border border-stone-700/80 transition-all shadow-xs cursor-pointer"
+            title="Open Today's Couple Briefing"
+          >
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden xs:inline">Briefing</span>
+          </button>
+
           {/* Sunday Check-in Button */}
           <button
             onClick={() => setIsSundayWizardOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all shadow-xs"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all shadow-xs cursor-pointer"
             title="Start Sunday 9:30 PM Routine Check-in"
           >
             <CalendarCheck className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
