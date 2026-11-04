@@ -123,9 +123,57 @@ export const INITIAL_SETTINGS: AppSettings = {
   dogWalkingTracker: true,
   activeViewPartner: 'both',
   pairCode: 'WOLFY-JACK-RUSSELL-77',
-  hasCompletedFirstWeek: true, // enables 2nd run copy prompt
+  hasCompletedFirstWeek: false,
   dailyBriefingPopupEnabled: true,
+  customDaytimePresets: [
+    '9am Dr appt',
+    '10am Get chicken out of freezer',
+    '11am Team standup',
+    '12pm Dog walk with Wolfy',
+    '2pm Focus block',
+    '4pm Vet appointment',
+  ],
+  customEveningPresets: [
+    '6pm Dinner prep',
+    '6:30pm Gym / Workout',
+    '7pm Walk Wolfy',
+    '8pm Dinner booking',
+    '8:30pm Film & relax',
+  ],
+  customActivityChipsAM: [
+    '💻 WFH',
+    '🏢 Office',
+    '🏋️ Gym',
+    '🐾 Walk Wolfy',
+    '🏃 Run',
+    '☕ Coffee',
+  ],
+  customActivityChipsPM: [
+    '🍻 Out with friends',
+    '✨ Date night',
+    '🛋️ Chill in',
+    '🏋️ Workout',
+    '🍕 Takeaway',
+    '🐾 Wolfy walk',
+  ],
 };
+
+export const DEFAULT_DAYTIME_PRESETS = [
+  '9am Dr appt',
+  '10am Get chicken out of freezer',
+  '11am Team standup',
+  '12pm Dog walk with Wolfy',
+  '2pm Focus block',
+  '4pm Vet appointment',
+];
+
+export const DEFAULT_EVENING_PRESETS = [
+  '6pm Dinner prep',
+  '6:30pm Gym / Workout',
+  '7pm Walk Wolfy',
+  '8pm Dinner booking',
+  '8:30pm Film & relax',
+];
 
 // Calm, uncluttered initial schedule
 export const INITIAL_SCHEDULE: DaySchedule[] = [
@@ -164,20 +212,18 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
     shortLabel: 'Tue',
     dateStr: getDateStrFor('tuesday', 'Oct 27'),
     partner1: {
-      am: { activity: 'Office', workLocation: 'office', wolfyDuty: false },
-      pm: { activity: 'Out with workmates', workLocation: 'office', wolfyDuty: false },
+      am: { activity: '', workLocation: 'wfh', wolfyDuty: false },
+      pm: { activity: '', workLocation: 'wfh', wolfyDuty: false },
     },
     partner2: {
-      am: { activity: 'WFH', workLocation: 'wfh', wolfyDuty: true },
-      pm: { activity: 'Pilates', workLocation: 'wfh', wolfyDuty: true },
+      am: { activity: '', workLocation: 'wfh', wolfyDuty: true },
+      pm: { activity: '', workLocation: 'wfh', wolfyDuty: true },
     },
     dinner: {
-      type: 'separate',
-      cook: 'takeaway',
-      mealName: 'Own Dinners',
-      tags: ['Own Dinners'],
-      partner1OwnDinner: 'Out with workmates',
-      partner2OwnDinner: 'Pasta at home',
+      type: 'together',
+      cook: 'partner1',
+      mealName: 'Dinner together',
+      tags: ['Home Cooked'],
     },
   },
   {
@@ -227,11 +273,11 @@ export const INITIAL_SCHEDULE: DaySchedule[] = [
         id: 'task-1',
         day: 'thursday',
         time: '4:00 PM',
-        title: 'Pick up child from school',
+        title: 'Pick up parcel from post office',
         assignedTo: 'partner2',
         assignedBy: 'partner1',
         completed: false,
-        category: 'school',
+        category: 'errand',
         createdAt: Date.now() - 3600000,
       },
     ],
@@ -354,10 +400,10 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-1',
     timestamp: Date.now() - 1000 * 60 * 15,
-    authorId: 'partner2',
-    authorName: 'Beth',
-    title: 'Tuesday Update',
-    message: 'Added Pilates in the evening.',
+    authorId: 'partner1',
+    authorName: 'Antony',
+    title: 'Welcome to Wolfy! 🐺',
+    message: 'Weekly couple routine and Wolfy schedule synchronized.',
     type: 'schedule_update',
     read: false,
     day: 'tuesday',

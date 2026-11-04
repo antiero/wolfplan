@@ -11,10 +11,19 @@ import {
   Save,
   RotateCcw,
   Sparkles,
+  Trash2,
+  Plus,
+  Sun,
+  Moon,
+  Sliders,
 } from 'lucide-react';
 import { playChime } from '../utils/sound';
 import { GoogleAuthButton } from './GoogleAuthButton';
 import { UserAvatar } from './UserAvatar';
+import {
+  DEFAULT_DAYTIME_PRESETS,
+  DEFAULT_EVENING_PRESETS,
+} from '../data/initialData';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -32,6 +41,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [p1Name, setP1Name] = useState(settings.partner1.name);
   const [p2Name, setP2Name] = useState(settings.partner2.name);
 
+  // Preset customization state
+  const [daytimePresets, setDaytimePresets] = useState<string[]>(
+    settings.customDaytimePresets || DEFAULT_DAYTIME_PRESETS
+  );
+  const [eveningPresets, setEveningPresets] = useState<string[]>(
+    settings.customEveningPresets || DEFAULT_EVENING_PRESETS
+  );
+  const [newDaytimeInput, setNewDaytimeInput] = useState('');
+  const [newEveningInput, setNewEveningInput] = useState('');
+
   if (!isOpen) return null;
 
   const handleSave = () => {
@@ -45,6 +64,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       dailyBriefingPopupEnabled,
       partner1: { ...settings.partner1, name: trimmed1, shortName: trimmed1.slice(0, 4) },
       partner2: { ...settings.partner2, name: trimmed2, shortName: trimmed2.slice(0, 4) },
+      customDaytimePresets: daytimePresets,
+      customEveningPresets: eveningPresets,
     });
     playChime('success');
     onClose();
@@ -217,6 +238,138 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   onChange={(e) => setP2Name(e.target.value)}
                   className="w-full px-2.5 py-1.5 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Customizable Presets (Daytime & Evening) */}
+          <div className="p-4 rounded-2xl bg-stone-900/60 border border-stone-800 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-amber-200 flex items-center gap-1.5 text-xs">
+                <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                Quick Timing & Activity Presets
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDaytimePresets(DEFAULT_DAYTIME_PRESETS);
+                  setEveningPresets(DEFAULT_EVENING_PRESETS);
+                }}
+                className="text-[10px] text-stone-400 hover:text-amber-300 transition-colors"
+                title="Reset to Wolfy defaults"
+              >
+                Reset to defaults
+              </button>
+            </div>
+            <p className="text-[11px] text-stone-400 leading-relaxed">
+              Customise the quick 1-tap buttons shown when planning Daytime and Evening routines. Remove presets you don't use or add your own (e.g. gym, appointments, errands).
+            </p>
+
+            {/* Daytime Presets */}
+            <div className="space-y-2 pt-1 border-t border-stone-800/60">
+              <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                <Sun className="w-3 h-3 text-amber-400" />
+                Daytime Presets (Morning & Afternoon)
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {daytimePresets.map((preset) => (
+                  <span
+                    key={preset}
+                    className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg bg-stone-950 border border-stone-800 text-stone-200"
+                  >
+                    <span>{preset}</span>
+                    <button
+                      type="button"
+                      onClick={() => setDaytimePresets(daytimePresets.filter((p) => p !== preset))}
+                      className="text-stone-500 hover:text-rose-400 transition-colors p-0.5"
+                      title="Remove preset"
+                    >
+                      <Trash2 className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 pt-1">
+                <input
+                  type="text"
+                  value={newDaytimeInput}
+                  onChange={(e) => setNewDaytimeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newDaytimeInput.trim()) {
+                      e.preventDefault();
+                      setDaytimePresets([...daytimePresets, newDaytimeInput.trim()]);
+                      setNewDaytimeInput('');
+                    }
+                  }}
+                  placeholder="e.g. 9am Dr appt, 10am Chicken out"
+                  className="flex-1 px-2.5 py-1.5 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newDaytimeInput.trim()) {
+                      setDaytimePresets([...daytimePresets, newDaytimeInput.trim()]);
+                      setNewDaytimeInput('');
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Add
+                </button>
+              </div>
+            </div>
+
+            {/* Evening Presets */}
+            <div className="space-y-2 pt-2 border-t border-stone-800/60">
+              <span className="text-[11px] font-bold text-indigo-300 flex items-center gap-1">
+                <Moon className="w-3 h-3 text-indigo-400" />
+                Evening Presets (6pm onwards)
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {eveningPresets.map((preset) => (
+                  <span
+                    key={preset}
+                    className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg bg-stone-950 border border-stone-800 text-stone-200"
+                  >
+                    <span>{preset}</span>
+                    <button
+                      type="button"
+                      onClick={() => setEveningPresets(eveningPresets.filter((p) => p !== preset))}
+                      className="text-stone-500 hover:text-rose-400 transition-colors p-0.5"
+                      title="Remove preset"
+                    >
+                      <Trash2 className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 pt-1">
+                <input
+                  type="text"
+                  value={newEveningInput}
+                  onChange={(e) => setNewEveningInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newEveningInput.trim()) {
+                      e.preventDefault();
+                      setEveningPresets([...eveningPresets, newEveningInput.trim()]);
+                      setNewEveningInput('');
+                    }
+                  }}
+                  placeholder="e.g. 6:30pm Gym, 7pm Walk Wolfy"
+                  className="flex-1 px-2.5 py-1.5 rounded-lg bg-stone-950 border border-stone-700 text-xs text-stone-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newEveningInput.trim()) {
+                      setEveningPresets([...eveningPresets, newEveningInput.trim()]);
+                      setNewEveningInput('');
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-semibold flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Add
+                </button>
               </div>
             </div>
           </div>

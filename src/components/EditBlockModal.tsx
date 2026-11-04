@@ -1,49 +1,154 @@
 import React, { useState } from 'react';
 import { useWolfy } from '../context/WolfyContext';
 import { DayOfWeek, PartnerId, ScheduleBlock, WorkLocation, TimedActivity } from '../types';
-import { COMMON_AM_CHIPS, COMMON_PM_CHIPS } from '../data/initialData';
-import { X, PawPrint, Check, Building, Laptop, Plane, Sun, Clock, Plus, Trash2 } from 'lucide-react';
-import { WolfyAvatar } from './WolfyAvatar';
+import {
+  DEFAULT_DAYTIME_PRESETS,
+  DEFAULT_EVENING_PRESETS,
+  COMMON_AM_CHIPS,
+  COMMON_PM_CHIPS,
+} from '../data/initialData';
+import {
+  X,
+  PawPrint,
+  Check,
+  Building,
+  Laptop,
+  Plane,
+  Sun,
+  Moon,
+  Clock,
+  Plus,
+  Trash2,
+  Settings as SettingsIcon,
+  RotateCcw,
+} from 'lucide-react';
+import { playChime } from '../utils/sound';
 
 interface EditBlockModalProps {
   day: DayOfWeek;
   partnerId: PartnerId;
-  period: 'am' | 'pm';
-  initialBlock: ScheduleBlock;
+  period?: 'am' | 'pm';
+  initialBlock?: ScheduleBlock;
   onClose: () => void;
 }
 
 export const EditBlockModal: React.FC<EditBlockModalProps> = ({
   day,
   partnerId,
-  period,
+  period = 'am',
   initialBlock,
   onClose,
 }) => {
-  const { settings, updateScheduleBlock } = useWolfy();
-  const [activity, setActivity] = useState(initialBlock.activity || '');
-  const [workLocation, setWorkLocation] = useState<WorkLocation>(initialBlock.workLocation || 'wfh');
-  const [notes, setNotes] = useState(initialBlock.notes || '');
-  const [wolfyDuty, setWolfyDuty] = useState(!!initialBlock.wolfyDuty);
-  const [timedActivities, setTimedActivities] = useState<TimedActivity[]>(initialBlock.timedActivities || []);
+  const { schedule, settings, updateScheduleBlock, updateSettings } = useWolfy();
+
+  const currentDaySchedule = schedule.find((d) => d.day === day);
+  const currentPartnerData = currentDaySchedule?.[partnerId];
+
+  // Active period tab: 'am' = Daytime (Morning & Afternoon), 'pm' = Evening (6pm onwards)
+  const [activePeriod, setActivePeriod] = useState<'am' | 'pm'>(period);
+
+  // AM state (Daytime: morning & afternoon up to 6pm)
+  const [amActivity, setAmActivity] = useState(
+    initialBlock && period === 'am' ? initialBlock.activity : currentPartnerData?.am.activity || ''
+  );
+  const [amWorkLocation, setAmWorkLocation] = useState<WorkLocation>(
+    initialBlock && period === 'am' ? initialBlock.workLocation || 'wfh' : currentPartnerData?.am.workLocation || 'wfh'
+  );
+  const [amWolfyDuty, setAmWolfyDuty] = useState(
+    initialBlock && period === 'am' ? !!initialBlock.wolfyDuty : !!currentPartnerData?.am.wolfyDuty
+  );
+  const [amTimedActivities, setAmTimedActivities] = useState<TimedActivity[]>(
+    initialBlock && period === 'am'
+      ? initialBlock.timedActivities || []
+      : currentPartnerData?.am.timedActivities || []
+  );
+  const [amNotes, setAmNotes] = useState(
+    initialBlock && period === 'am' ? initialBlock.notes || '' : currentPartnerData?.am.notes || ''
+  );
+
+  // PM state (Evening: 6pm onwards)
+  const [pmActivity, setPmActivity] = useState(
+    initialBlock && period === 'pm' ? initialBlock.activity : currentPartnerData?.pm.activity || ''
+  );
+  const [pmWorkLocation, setPmWorkLocation] = useState<WorkLocation>(
+    initialBlock && period === 'pm' ? initialBlock.workLocation || 'wfh' : currentPartnerData?.pm.workLocation || 'wfh'
+  );
+  const [pmWolfyDuty, setPmWolfyDuty] = useState(
+    initialBlock && period === 'pm' ? !!initialBlock.wolfyDuty : !!currentPartnerData?.pm.wolfyDuty
+  );
+  const [pmTimedActivities, setPmTimedActivities] = useState<TimedActivity[]>(
+    initialBlock && period === 'pm'
+      ? initialBlock.timedActivities || []
+      : currentPartnerData?.pm.timedActivities || []
+  );
+  const [pmNotes, setPmNotes] = useState(
+    initialBlock && period === 'pm' ? initialBlock.notes || '' : currentPartnerData?.pm.notes || ''
+  );
+
+  // Timed activity input states
   const [newTime, setNewTime] = useState(period === 'am' ? '9:00 AM' : '6:00 PM');
   const [newTimedText, setNewTimedText] = useState('');
+
+  // Preset customization drawer state
+  const [isEditingPresets, setIsEditingPresets] = useState(false);
+  const [newCustomPresetText, setNewCustomPresetText] = useState('');
 
   const partner = partnerId === 'partner1' ? settings.partner1 : settings.partner2;
   const partnerName = partner.name === 'Alex' ? (partnerId === 'partner1' ? 'Antony' : 'Beth') : (partner.name || (partnerId === 'partner1' ? 'Antony' : 'Beth'));
   const partnerShortName = partner.shortName === 'Alex' ? (partnerId === 'partner1' ? 'Ant' : 'Beth') : (partner.shortName || (partnerId === 'partner1' ? 'Ant' : 'Beth'));
 
-  const chips = period === 'am' ? COMMON_AM_CHIPS : COMMON_PM_CHIPS;
   const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
-  const periodLabel = period === 'am' ? 'Daytime' : 'Evening';
 
-  const timePills = period === 'am'
-    ? ['8:30 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM']
-    : ['1:00 PM', '2:30 PM', '4:00 PM', '5:30 PM', '6:30 PM', '8:00 PM'];
+  // Presets from settings or clean defaults (NO school presets)
+  const daytimePresets = settings.customDaytimePresets && settings.customDaytimePresets.length > 0
+    ? settings.customDaytimePresets
+    : DEFAULT_DAYTIME_PRESETS;
 
-  const timedPresets = period === 'am'
-    ? ['9am Dr appt', '10am Get chicken out of freezer', '11am Team standup', '8:30am School drop-off']
-    : ['4pm Pick up child from school', '5:30pm Vet appointment', '6:30pm Pilates / Gym', '8pm Dinner booking'];
+  const eveningPresets = settings.customEveningPresets && settings.customEveningPresets.length > 0
+    ? settings.customEveningPresets
+    : DEFAULT_EVENING_PRESETS;
+
+  const currentPresets = activePeriod === 'am' ? daytimePresets : eveningPresets;
+
+  // Time pill buttons
+  // Daytime includes morning AND afternoon times (up to 5pm)
+  const daytimeTimePills = [
+    '8:00 AM',
+    '9:00 AM',
+    '10:00 AM',
+    '11:00 AM',
+    '12:00 PM',
+    '1:00 PM',
+    '2:00 PM',
+    '3:00 PM',
+    '4:00 PM',
+    '5:00 PM',
+  ];
+
+  // Evening is defined as 6pm onwards
+  const eveningTimePills = [
+    '6:00 PM',
+    '6:30 PM',
+    '7:00 PM',
+    '7:30 PM',
+    '8:00 PM',
+    '8:30 PM',
+    '9:00 PM',
+    '10:00 PM',
+  ];
+
+  const activeTimePills = activePeriod === 'am' ? daytimeTimePills : eveningTimePills;
+
+  // Activity chips
+  const amChips = settings.customActivityChipsAM || COMMON_AM_CHIPS;
+  const pmChips = settings.customActivityChipsPM || COMMON_PM_CHIPS;
+  const activeChips = activePeriod === 'am' ? amChips : pmChips;
+
+  const handlePeriodTabChange = (target: 'am' | 'pm') => {
+    setActivePeriod(target);
+    setNewTime(target === 'am' ? '9:00 AM' : '6:00 PM');
+    setNewTimedText('');
+  };
 
   const handleAddTimed = () => {
     if (!newTimedText.trim()) return;
@@ -52,80 +157,199 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
       time: newTime,
       text: newTimedText.trim(),
     };
-    setTimedActivities([...timedActivities, item]);
+
+    if (activePeriod === 'am') {
+      setAmTimedActivities([...amTimedActivities, item]);
+    } else {
+      setPmTimedActivities([...pmTimedActivities, item]);
+    }
     setNewTimedText('');
   };
 
+  const handleApplyPreset = (presetText: string) => {
+    const parts = presetText.split(' ');
+    const t = parts[0];
+    const rest = parts.slice(1).join(' ');
+    const item: TimedActivity = {
+      id: 'timed-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      time: t.toUpperCase(),
+      text: rest || presetText,
+    };
+
+    if (activePeriod === 'am') {
+      setAmTimedActivities([...amTimedActivities, item]);
+    } else {
+      setPmTimedActivities([...pmTimedActivities, item]);
+    }
+  };
+
   const handleRemoveTimed = (id: string) => {
-    setTimedActivities(timedActivities.filter((t) => t.id !== id));
+    if (activePeriod === 'am') {
+      setAmTimedActivities(amTimedActivities.filter((t) => t.id !== id));
+    } else {
+      setPmTimedActivities(pmTimedActivities.filter((t) => t.id !== id));
+    }
+  };
+
+  // Preset management: Add custom preset
+  const handleAddCustomPreset = () => {
+    if (!newCustomPresetText.trim()) return;
+    const val = newCustomPresetText.trim();
+    if (activePeriod === 'am') {
+      const updated = [...daytimePresets, val];
+      updateSettings({ customDaytimePresets: updated });
+    } else {
+      const updated = [...eveningPresets, val];
+      updateSettings({ customEveningPresets: updated });
+    }
+    setNewCustomPresetText('');
+    playChime('notification');
+  };
+
+  // Preset management: Remove custom preset
+  const handleRemoveCustomPreset = (presetToRemove: string) => {
+    if (activePeriod === 'am') {
+      const updated = daytimePresets.filter((p) => p !== presetToRemove);
+      updateSettings({ customDaytimePresets: updated });
+    } else {
+      const updated = eveningPresets.filter((p) => p !== presetToRemove);
+      updateSettings({ customEveningPresets: updated });
+    }
+  };
+
+  // Reset presets to clean defaults
+  const handleResetPresets = () => {
+    if (activePeriod === 'am') {
+      updateSettings({ customDaytimePresets: DEFAULT_DAYTIME_PRESETS });
+    } else {
+      updateSettings({ customEveningPresets: DEFAULT_EVENING_PRESETS });
+    }
   };
 
   const handleSave = () => {
-    updateScheduleBlock(day, partnerId, period, {
-      activity: activity.trim() || 'Free / Flexible',
-      workLocation,
-      notes: notes.trim(),
-      wolfyDuty,
-      timedActivities,
+    // Save both Daytime and Evening routines in one seamless transaction
+    updateScheduleBlock(day, partnerId, 'am', {
+      activity: amActivity.trim() || 'Daytime flexible',
+      workLocation: amWorkLocation,
+      notes: amNotes.trim(),
+      wolfyDuty: amWolfyDuty,
+      timedActivities: amTimedActivities,
     });
+
+    updateScheduleBlock(day, partnerId, 'pm', {
+      activity: pmActivity.trim() || 'Evening flexible',
+      workLocation: pmWorkLocation,
+      notes: pmNotes.trim(),
+      wolfyDuty: pmWolfyDuty,
+      timedActivities: pmTimedActivities,
+    });
+
+    playChime('success');
     onClose();
   };
 
+  // Current active values based on tab
+  const currentActivity = activePeriod === 'am' ? amActivity : pmActivity;
+  const setCurrentActivity = activePeriod === 'am' ? setAmActivity : setPmActivity;
+  const currentWorkLocation = activePeriod === 'am' ? amWorkLocation : pmWorkLocation;
+  const setCurrentWorkLocation = activePeriod === 'am' ? setAmWorkLocation : setPmWorkLocation;
+  const currentWolfyDuty = activePeriod === 'am' ? amWolfyDuty : pmWolfyDuty;
+  const setCurrentWolfyDuty = activePeriod === 'am' ? setAmWolfyDuty : setPmWolfyDuty;
+  const currentTimedList = activePeriod === 'am' ? amTimedActivities : pmTimedActivities;
+  const currentNotes = activePeriod === 'am' ? amNotes : pmNotes;
+  const setCurrentNotes = activePeriod === 'am' ? setAmNotes : setPmNotes;
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-[#181514] border-t sm:border border-stone-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg shadow-2xl p-5 text-stone-100 animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-[#181514] border-t sm:border border-stone-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden text-stone-100 animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-150">
         
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-stone-800">
+        {/* Sticky Header */}
+        <div className="p-4 bg-stone-950 border-b border-stone-800 shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className={`w-7 h-7 rounded-full ${partner.avatarBg} text-white text-xs font-bold flex items-center justify-center`}>
+            <span className={`w-8 h-8 rounded-full ${partner.avatarBg} text-white text-xs font-bold flex items-center justify-center shadow-xs`}>
               {partnerShortName.charAt(0)}
             </span>
             <div>
-              <h3 className="font-bold text-base text-amber-200">
-                Edit {dayLabel} {periodLabel}
+              <h3 className="font-bold text-sm sm:text-base text-amber-200 font-serif">
+                Edit {dayLabel} Routine • {partnerName}
               </h3>
-              <p className="text-xs text-stone-400">
-                Update rough {periodLabel.toLowerCase()} routine for {partnerName}
+              <p className="text-[11px] text-stone-400">
+                Update rough daytime and evening plans with specific timings
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-stone-800 text-stone-400 hover:text-stone-200"
+            className="p-1.5 rounded-full hover:bg-stone-800 text-stone-400 hover:text-stone-200 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="py-4 space-y-4">
-          {/* Main Activity */}
+        {/* Dual Period Tab Switcher (Daytime vs Evening 6pm onwards) */}
+        <div className="px-4 py-2 bg-stone-900 border-b border-stone-800 shrink-0 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => handlePeriodTabChange('am')}
+            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+              activePeriod === 'am'
+                ? 'bg-amber-500 text-stone-950 shadow-md font-extrabold'
+                : 'bg-stone-950/60 text-stone-400 hover:text-stone-200 hover:bg-stone-950'
+            }`}
+          >
+            <Sun className="w-4 h-4" />
+            <span>☀️ Daytime (Morning & Afternoon)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePeriodTabChange('pm')}
+            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+              activePeriod === 'pm'
+                ? 'bg-indigo-600 text-white shadow-md font-extrabold'
+                : 'bg-stone-950/60 text-stone-400 hover:text-stone-200 hover:bg-stone-950'
+            }`}
+          >
+            <Moon className="w-4 h-4" />
+            <span>🌙 Evening (6pm onwards)</span>
+          </button>
+        </div>
+
+        {/* Scrollable Form Body with smooth iOS overscroll */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain">
+          
+          {/* Main Activity Input */}
           <div>
-            <label className="text-xs font-semibold text-stone-300 block mb-1.5">
-              Rough Activity / Plan
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-stone-200">
+                {activePeriod === 'am' ? '☀️ Daytime Activity / Rough Plan' : '🌙 Evening Activity / Plan (6pm onwards)'}
+              </label>
+              <span className="text-[10px] text-stone-500">
+                {activePeriod === 'am' ? 'Morning through 5pm' : '6pm into night'}
+              </span>
+            </div>
+
             <input
               type="text"
-              value={activity}
-              onChange={(e) => setActivity(e.target.value)}
-              placeholder={period === 'am' ? 'e.g. Working from Home & Gym' : 'e.g. Out with workmates, Pilates or dinner'}
+              value={currentActivity}
+              onChange={(e) => setCurrentActivity(e.target.value)}
+              placeholder={activePeriod === 'am' ? 'e.g. WFH & gym, Afternoon coffee' : 'e.g. Dinner together, Out with friends, Relax'}
               className="w-full px-3.5 py-2.5 rounded-xl bg-stone-950 border border-stone-700 text-sm text-stone-100 focus:border-amber-500 focus:outline-hidden"
               autoFocus
             />
 
             {/* Quick Chips */}
-            <div className="mt-2.5">
-              <span className="text-[11px] text-stone-400 font-medium block mb-1.5">
-                Quick {periodLabel} Presets:
+            <div className="mt-2">
+              <span className="text-[11px] text-stone-400 font-medium block mb-1">
+                Quick Activity Chips:
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {chips.map((chip) => (
+                {activeChips.map((chip) => (
                   <button
                     key={chip}
                     type="button"
-                    onClick={() => setActivity(chip)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 transition-colors"
+                    onClick={() => setCurrentActivity(chip)}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-stone-800/80 hover:bg-stone-700 text-stone-300 border border-stone-700/80 transition-colors"
                   >
                     {chip}
                   </button>
@@ -134,10 +358,10 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
             </div>
           </div>
 
-          {/* Location / Work status */}
+          {/* Location Status */}
           <div>
-            <label className="text-xs font-semibold text-stone-300 block mb-1.5">
-              Location Status
+            <label className="text-xs font-bold text-stone-300 block mb-1.5">
+              Location Status ({activePeriod === 'am' ? 'Daytime' : 'Evening'})
             </label>
             <div className="grid grid-cols-4 gap-2">
               {[
@@ -149,10 +373,12 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
                 <button
                   key={loc.id}
                   type="button"
-                  onClick={() => setWorkLocation(loc.id as WorkLocation)}
+                  onClick={() => setCurrentWorkLocation(loc.id as WorkLocation)}
                   className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                    workLocation === loc.id
-                      ? 'bg-amber-600/30 text-amber-200 border-amber-500 font-bold'
+                    currentWorkLocation === loc.id
+                      ? activePeriod === 'am'
+                        ? 'bg-amber-600/30 text-amber-200 border-amber-500 font-bold'
+                        : 'bg-indigo-600/30 text-indigo-200 border-indigo-500 font-bold'
                       : 'bg-stone-950/70 text-stone-400 border-stone-800 hover:bg-stone-800'
                   }`}
                 >
@@ -166,86 +392,143 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
           {/* Wolfy dog walking duty */}
           <div className="bg-amber-950/30 border border-amber-800/40 rounded-2xl p-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <WolfyAvatar size="sm" mood="walkies" />
+              <span className="p-1.5 rounded-xl bg-amber-500/20 text-amber-300">
+                <PawPrint className="w-4 h-4 text-amber-400" />
+              </span>
               <div>
-                <p className="text-xs font-bold text-amber-200 flex items-center gap-1">
-                  <PawPrint className="w-3.5 h-3.5 text-amber-400" /> Wolfy Dog Walk Duty
+                <p className="text-xs font-bold text-amber-200">
+                  Wolfy Dog Walk Duty ({activePeriod === 'am' ? 'Daytime' : 'Evening'})
                 </p>
                 <p className="text-[11px] text-stone-400">
-                  {partner.name} handles Wolfy during this block
+                  {partnerName} takes Wolfy for a walk
                 </p>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() => setWolfyDuty(!wolfyDuty)}
+              onClick={() => setCurrentWolfyDuty(!currentWolfyDuty)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                wolfyDuty
+                currentWolfyDuty
                   ? 'bg-amber-500 text-stone-950 border-amber-400'
                   : 'bg-stone-800 text-stone-400 border-stone-700 hover:bg-stone-700'
               }`}
             >
-              {wolfyDuty ? 'Assigned 🐾' : 'Not Assigned'}
+              {currentWolfyDuty ? 'Assigned 🐾' : 'Not Assigned'}
             </button>
           </div>
 
-          {/* Time-Bound Activities (Specific Timings) */}
-          <div className="p-3.5 rounded-2xl bg-stone-950/70 border border-stone-800 space-y-3">
+          {/* Specific Timings & Time-Bound Activities Section */}
+          <div className="p-3.5 rounded-2xl bg-stone-950/80 border border-stone-800 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Specific Timings & Appointments</span>
+                  <span>
+                    Specific Timings & Appointments ({activePeriod === 'am' ? 'Morning & Afternoon' : '6pm onwards'})
+                  </span>
                 </label>
                 <p className="text-[11px] text-stone-400">
-                  e.g. 9am dr appt, 10am get chicken out of the freezer
+                  {activePeriod === 'am'
+                    ? 'e.g. 9am Dr appt, 10am get chicken out of freezer, 2pm Vet'
+                    : 'e.g. 6:30pm Gym, 8pm Dinner booking, 9pm Movie'}
                 </p>
               </div>
-              <span className="text-[10px] text-stone-500 font-mono">
-                {timedActivities.length} set
-              </span>
+
+              <button
+                type="button"
+                onClick={() => setIsEditingPresets(!isEditingPresets)}
+                className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 px-2 py-1 rounded-lg bg-stone-900 border border-stone-700"
+                title="Customize quick presets (remove school buttons, add your own)"
+              >
+                <SettingsIcon className="w-3 h-3" />
+                <span>{isEditingPresets ? 'Done' : 'Customise'}</span>
+              </button>
             </div>
 
-            {/* Quick Presets */}
-            <div className="flex flex-wrap gap-1.5">
-              {timedPresets.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => {
-                    const parts = preset.split(' ');
-                    const t = parts[0];
-                    const rest = parts.slice(1).join(' ');
-                    setTimedActivities([
-                      ...timedActivities,
-                      {
-                        id: 'timed-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-                        time: t.toUpperCase(),
-                        text: rest,
-                      },
-                    ]);
-                  }}
-                  className="text-[11px] px-2 py-0.5 rounded-md bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-800 transition-colors"
-                >
-                  + {preset}
-                </button>
-              ))}
-            </div>
+            {/* Custom Presets Manager Drawer */}
+            {isEditingPresets ? (
+              <div className="p-3 rounded-xl bg-stone-900 border border-amber-500/30 space-y-2.5 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300">
+                    Customise {activePeriod === 'am' ? 'Daytime' : 'Evening'} Presets:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetPresets}
+                    className="text-[10px] text-stone-400 hover:text-stone-200 flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" />
+                    <span>Reset Defaults</span>
+                  </button>
+                </div>
 
-            {/* Input Row */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex items-center gap-1">
+                <div className="flex flex-wrap gap-1.5">
+                  {currentPresets.map((preset) => (
+                    <span
+                      key={preset}
+                      className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg bg-stone-950 border border-stone-700 text-stone-200"
+                    >
+                      <span>{preset}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCustomPreset(preset)}
+                        className="text-stone-400 hover:text-rose-400 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-1.5 pt-1 border-t border-stone-800">
+                  <input
+                    type="text"
+                    value={newCustomPresetText}
+                    onChange={(e) => setNewCustomPresetText(e.target.value)}
+                    placeholder="e.g. 10am Tattoo, 4pm Vet, 7pm Guitar"
+                    className="flex-1 px-2.5 py-1.5 rounded-xl bg-stone-950 border border-stone-700 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomPreset}
+                    disabled={!newCustomPresetText.trim()}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold disabled:opacity-50"
+                  >
+                    + Add Preset
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Quick Presets Pills */
+              <div className="space-y-1">
+                <span className="text-[10px] text-stone-400 font-medium">Quick One-Tap Presets:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {currentPresets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleApplyPreset(preset)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-750 transition-colors cursor-pointer"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Timing Input & Time Pills */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={newTime}
                   onChange={(e) => setNewTime(e.target.value)}
                   placeholder="Time"
-                  className="w-24 px-2.5 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden font-medium"
+                  className="w-24 px-2.5 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden font-medium text-center"
                 />
-              </div>
 
-              <div className="flex-1 flex items-center gap-1.5">
                 <input
                   type="text"
                   value={newTimedText}
@@ -256,9 +539,10 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
                       handleAddTimed();
                     }
                   }}
-                  placeholder="Event / Reminder (e.g. Dr appt, Defrost food)"
+                  placeholder="Activity / Event (e.g. Tattoo, Vet, Defrost food)"
                   className="flex-1 px-3 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-stone-100 focus:border-amber-500 focus:outline-hidden"
                 />
+
                 <button
                   type="button"
                   onClick={handleAddTimed}
@@ -269,36 +553,39 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
                   <span>Add</span>
                 </button>
               </div>
+
+              {/* Quick Time Pills */}
+              <div className="flex flex-wrap gap-1 pt-1">
+                {activeTimePills.map((pill) => (
+                  <button
+                    key={pill}
+                    type="button"
+                    onClick={() => setNewTime(pill)}
+                    className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+                      newTime === pill
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500 font-bold'
+                        : 'bg-stone-900/60 text-stone-400 border-stone-800 hover:text-stone-200'
+                    }`}
+                  >
+                    {pill}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Quick Time Pills */}
-            <div className="flex flex-wrap gap-1">
-              {timePills.map((pill) => (
-                <button
-                  key={pill}
-                  type="button"
-                  onClick={() => setNewTime(pill)}
-                  className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
-                    newTime === pill
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500'
-                      : 'bg-stone-900/60 text-stone-400 border-stone-800'
-                  }`}
-                >
-                  {pill}
-                </button>
-              ))}
-            </div>
-
-            {/* Current Timed Activities List */}
-            {timedActivities.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                {timedActivities.map((act) => (
+            {/* List of currently added timed activities */}
+            {currentTimedList.length > 0 && (
+              <div className="space-y-1.5 pt-2 border-t border-stone-800">
+                <span className="text-[10px] text-stone-400 font-semibold block">
+                  Scheduled Timings ({currentTimedList.length}):
+                </span>
+                {currentTimedList.map((act) => (
                   <div
                     key={act.id}
                     className="flex items-center justify-between p-2 rounded-xl bg-stone-900 border border-stone-800 text-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 font-semibold text-[10px] shrink-0">
+                      <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 font-bold text-[10px] shrink-0">
                         {act.time}
                       </span>
                       <span className="font-medium text-stone-200 truncate">{act.text}</span>
@@ -316,36 +603,44 @@ export const EditBlockModal: React.FC<EditBlockModalProps> = ({
             )}
           </div>
 
-          {/* Additional Notes */}
+          {/* Notes for partner */}
           <div>
             <label className="text-xs font-semibold text-stone-300 block mb-1">
               Notes for {partnerId === 'partner1' ? settings.partner2.name : settings.partner1.name} (optional)
             </label>
             <input
               type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Free after 6pm, can pick up fresh bread"
+              value={currentNotes}
+              onChange={(e) => setCurrentNotes(e.target.value)}
+              placeholder="e.g. Free after 4pm, can grab fresh sourdough"
               className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-xs text-stone-200 focus:border-amber-500 focus:outline-hidden"
             />
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-800">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-stone-300 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-md transition-colors"
-          >
-            <Check className="w-4 h-4" />
-            <span>Save & Notify Partner</span>
-          </button>
+        {/* Sticky Fixed Footer */}
+        <div className="p-3.5 bg-stone-950 border-t border-stone-800 shrink-0 flex items-center justify-between gap-2">
+          <div className="text-[11px] text-stone-400 truncate hidden xs:block">
+            Editing {dayLabel} for {partnerName}
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-stone-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-md transition-colors"
+            >
+              <Check className="w-4 h-4 stroke-[2.5]" />
+              <span>Save {dayLabel} Routine</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

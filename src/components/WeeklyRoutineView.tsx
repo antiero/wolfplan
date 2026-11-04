@@ -36,6 +36,8 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
+  X,
+  ArrowRight,
 } from 'lucide-react';
 import { detectDayClashes } from '../utils/clashDetector';
 
@@ -59,6 +61,7 @@ export const WeeklyRoutineView: React.FC = () => {
     populateFromPreviousWeek,
     startFromScratch,
     hasCompletedFirstWeek,
+    previousWeekSchedule,
     openAssignTaskModal,
     toggleTaskCompleted,
     deleteTask,
@@ -66,6 +69,7 @@ export const WeeklyRoutineView: React.FC = () => {
   } = useWolfy();
 
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const [showPrePopulateModal, setShowPrePopulateModal] = useState(false);
   const [editingBlock, setEditingBlock] = useState<{
     day: DayOfWeek;
     partnerId: PartnerId;
@@ -246,20 +250,22 @@ export const WeeklyRoutineView: React.FC = () => {
 
         {/* Quiet Zen Agenda Actions Bar */}
         <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-stone-800/50 text-[11px] text-stone-400">
-          <div className="flex items-center gap-2">
-            {hasCompletedFirstWeek && (
-              <button
-                onClick={populateFromPreviousWeek}
-                className="flex items-center gap-1 hover:text-amber-300 transition-colors cursor-pointer"
-                title="Copy AM/PM routine blocks from previous week"
-              >
-                <RefreshCw className="w-3 h-3 text-amber-400" />
-                <span>Pre-populate Last Week</span>
-              </button>
-            )}
+          <div className="flex items-center gap-2 relative">
+            <button
+              onClick={() => setShowPrePopulateModal(true)}
+              className="flex items-center gap-1 hover:text-amber-300 transition-colors cursor-pointer"
+              title="Copy AM/PM routine blocks from previous week"
+            >
+              <RefreshCw className="w-3 h-3 text-amber-400" />
+              <span>Pre-populate Last Week</span>
+            </button>
             <span className="text-stone-600">•</span>
             <button
-              onClick={startFromScratch}
+              onClick={() => {
+                if (window.confirm('Clear all days to a blank canvas?')) {
+                  startFromScratch();
+                }
+              }}
               className="hover:text-stone-300 transition-colors cursor-pointer"
               title="Clear routine to blank template"
             >
@@ -395,10 +401,11 @@ export const WeeklyRoutineView: React.FC = () => {
                       block: currentDayData.partner1.am,
                     })
                   }
-                  className="p-1 text-stone-400 hover:text-amber-300"
-                  title="Edit schedule"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors cursor-pointer"
+                  title="Edit day routine (Daytime & Evening)"
                 >
-                  <Edit2 className="w-3 h-3" />
+                  <Edit2 className="w-3 h-3 text-amber-400" />
+                  <span>Edit Day</span>
                 </button>
               </div>
 
@@ -514,10 +521,11 @@ export const WeeklyRoutineView: React.FC = () => {
                       block: currentDayData.partner2.am,
                     })
                   }
-                  className="p-1 text-stone-400 hover:text-emerald-300"
-                  title="Edit schedule"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-300 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors cursor-pointer"
+                  title="Edit day routine (Daytime & Evening)"
                 >
-                  <Edit2 className="w-3 h-3" />
+                  <Edit2 className="w-3 h-3 text-emerald-400" />
+                  <span>Edit Day</span>
                 </button>
               </div>
 
@@ -812,6 +820,98 @@ export const WeeklyRoutineView: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Pre-populate Selection Modal */}
+      {showPrePopulateModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#181514] border border-stone-800 rounded-3xl w-full max-w-md shadow-2xl p-5 text-stone-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-800">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-amber-400" />
+                <h3 className="font-bold text-sm text-stone-100 font-serif">
+                  Pre-populate from Previous Week
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPrePopulateModal(false)}
+                className="p-1 rounded-full text-stone-400 hover:text-stone-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {!previousWeekSchedule || previousWeekSchedule.length === 0 ? (
+              <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-800/40 text-xs text-stone-300 space-y-2">
+                <p className="font-bold text-amber-200">No Previous Week Saved Yet 🐾</p>
+                <p className="text-stone-400 leading-relaxed">
+                  You haven't archived a previous week yet. Once you complete this week's plan, it will be automatically archived so you can copy your routines forward without retyping!
+                </p>
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => setShowPrePopulateModal(false)}
+                    className="px-4 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-semibold cursor-pointer"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5 text-xs">
+                <p className="text-stone-400">
+                  Select whose routine you'd like to copy from the archived week. This will not overwrite the other partner's entries:
+                </p>
+
+                <div className="grid grid-cols-1 gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      populateFromPreviousWeek(activeUser);
+                      setShowPrePopulateModal(false);
+                    }}
+                    className="p-3.5 rounded-2xl bg-stone-900 hover:bg-stone-850 border border-amber-600/40 text-left transition-colors flex items-center justify-between cursor-pointer group"
+                  >
+                    <div>
+                      <span className="font-bold text-stone-100 block group-hover:text-amber-200">
+                        Copy My Routine Only ({activeUser === 'partner1' ? p1.name : p2.name})
+                      </span>
+                      <span className="text-[11px] text-stone-400 mt-0.5 block">
+                        Keeps {activeUser === 'partner1' ? p2.name : p1.name}'s schedule completely untouched.
+                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-amber-400 shrink-0" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      populateFromPreviousWeek('both');
+                      setShowPrePopulateModal(false);
+                    }}
+                    className="p-3.5 rounded-2xl bg-stone-900 hover:bg-stone-850 border border-stone-800 text-left transition-colors flex items-center justify-between cursor-pointer group"
+                  >
+                    <div>
+                      <span className="font-bold text-stone-100 block group-hover:text-amber-200">
+                        Copy Both ({p1.name} & {p2.name})
+                      </span>
+                      <span className="text-[11px] text-stone-400 mt-0.5 block">
+                        Overwrites both partner routines with last week's templates.
+                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-stone-400 shrink-0" />
+                  </button>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => setShowPrePopulateModal(false)}
+                    className="px-3.5 py-1.5 rounded-xl bg-stone-900 text-stone-400 hover:text-stone-200 text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

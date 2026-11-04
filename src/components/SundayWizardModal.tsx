@@ -62,26 +62,31 @@ export const SundayWizardModal: React.FC = () => {
   const p2Short = p2.shortName === 'Alex' ? 'Beth' : (p2.shortName || 'Beth');
 
   // Choice 1: Pre-populate from previous week
-  const handlePrePopulateFromLastWeek = () => {
-    const source = (previousWeekSchedule && previousWeekSchedule.length > 0)
-      ? previousWeekSchedule
-      : schedule;
+  const handlePrePopulateFromLastWeek = (target: 'partner1' | 'partner2' | 'both' = 'both') => {
+    if (!previousWeekSchedule || previousWeekSchedule.length === 0) {
+      setWizardStep('plan_days');
+      return;
+    }
 
     setLocalSchedule((current) =>
       current.map((dayItem, idx) => {
-        const prev = source[idx] || source.find((p) => p.day === dayItem.day);
+        const prev = previousWeekSchedule[idx] || previousWeekSchedule.find((p) => p.day === dayItem.day);
         if (!prev) return dayItem;
         return {
           ...dayItem,
-          partner1: {
-            am: { ...prev.partner1.am },
-            pm: { ...prev.partner1.pm },
-          },
-          partner2: {
-            am: { ...prev.partner2.am },
-            pm: { ...prev.partner2.pm },
-          },
-          weekendVibes: prev.weekendVibes ? { ...prev.weekendVibes } : dayItem.weekendVibes,
+          partner1: (target === 'partner1' || target === 'both')
+            ? {
+                am: { ...prev.partner1.am },
+                pm: { ...prev.partner1.pm },
+              }
+            : dayItem.partner1,
+          partner2: (target === 'partner2' || target === 'both')
+            ? {
+                am: { ...prev.partner2.am },
+                pm: { ...prev.partner2.pm },
+              }
+            : dayItem.partner2,
+          weekendVibes: target === 'both' && prev.weekendVibes ? { ...prev.weekendVibes } : dayItem.weekendVibes,
         };
       })
     );
@@ -270,7 +275,7 @@ export const SundayWizardModal: React.FC = () => {
             <div className="grid grid-cols-1 gap-3 max-w-md mx-auto pt-1">
               {/* Option 1: Pre-populate from Previous Week */}
               <button
-                onClick={handlePrePopulateFromLastWeek}
+                onClick={() => handlePrePopulateFromLastWeek('both')}
                 className="p-4 rounded-2xl bg-stone-900/80 hover:bg-stone-850 border border-amber-600/40 text-left transition-all group shadow-sm hover:border-amber-500 cursor-pointer"
               >
                 <div className="flex items-start gap-3">

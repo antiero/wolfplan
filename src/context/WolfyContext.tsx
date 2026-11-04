@@ -101,7 +101,7 @@ interface WolfyContextType {
   
   hasCompletedFirstWeek: boolean;
   previousWeekSchedule: DaySchedule[] | null;
-  populateFromPreviousWeek: () => void;
+  populateFromPreviousWeek: (targetPartner?: 'partner1' | 'partner2' | 'both') => void;
   startFromScratch: () => void;
   archiveCurrentWeekAsPrevious: () => void;
 
@@ -170,7 +170,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       // fallback
     }
-    return INITIAL_SCHEDULE;
+    return null;
   });
 
   const [hasCompletedFirstWeek, setHasCompletedFirstWeek] = useState<boolean>(() => {
@@ -180,7 +180,7 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       // fallback
     }
-    return true; // allows 2nd run copy prompt
+    return false;
   });
 
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
@@ -1009,34 +1009,72 @@ export const WolfyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [activeUser, settings, addNotification]);
 
-  const populateFromPreviousWeek = useCallback(() => {
-    const sourceSchedule = (previousWeekSchedule && previousWeekSchedule.length > 0)
-      ? previousWeekSchedule
-      : INITIAL_SCHEDULE;
+  const populateFromPreviousWeek = useCallback((targetPartner?: 'partner1' | 'partner2' | 'both') => {
+    if (!previousWeekSchedule || previousWeekSchedule.length === 0) {
+      showToast({
+        id: String(Date.now()),
+        title: 'No Archived Week Yet 📅',
+        message: 'No previous week has been archived yet. Plan this week, and you can copy your routine forward anytime next week!',
+        authorName: 'Wolfy',
+        type: 'sunday_reminder',
+      });
+      return;
+    }
+
+    const target = targetPartner || activeUser;
+    const p1Name = settings.partner1.name === 'Alex' ? 'Antony' : settings.partner1.name;
+    const p2Name = settings.partner2.name === 'Alex' ? 'Beth' : settings.partner2.name;
+    const targetName = target === 'both' ? 'Both partners\'' : (target === 'partner1' ? p1Name : p2Name);
 
     setSchedule((current) => {
       const next = current.map((dayItem, idx) => {
-        const prevDay = sourceSchedule[idx] || sourceSchedule.find((p) => p.day === dayItem.day);
+        const prevDay = previousWeekSchedule[idx] || previousWeekSchedule.find((p) => p.day === dayItem.day);
         if (!prevDay) return dayItem;
-        const updated = {
+
+        const updated: DaySchedule = {
           ...dayItem,
-          partner1: {
-            am: { ...prevDay.partner1.am },
-            pm: { ...prevDay.partner1.pm },
-          },
-          partner2: {
-            am: { ...prevDay.partner2.am },
-            pm: { ...prevDay.partner2.pm },
-          },
-          weekendVibes: prevDay.weekendVibes ? { ...prevDay.weekendVibes } : dayItem.weekendVibes,
+          partner1: (target === 'partner1' || target === 'both')
+            ? {
+                am: { ...prevDay.partner1.am },
+                pm: { ...prevDay.partner1.pm },
+              }
+            : dayItem.partner1,
+          partner2: (target === 'partner2' || target === 'both')
+            ? {
+                am: { ...prevDay.partner2.am },
+                pm: { ...prevDay.partner2.pm },
+              }
+            : dayItem.partner2,
+          weekendVibes: target === 'both' && prevDay.weekendVibes
+            ? { ...prevDay.weekendVibes }
+            : dayItem.weekendVibes,
         };
         saveScheduleDoc(settings.pairCode, updated);
         return updated;
       });
+
+      const authorName = activeUser === 'partner1' ? p1Name : p2Name;
+      addNotification({
+        authorId: activeUser,
+        authorName,
+        title: 'Routine Copied 📋',
+        message: `${authorName} copied ${targetName} routine from previous week.`,
+        type: 'schedule_update',
+      });
+
+      broadcastChange('SCHEDULE_UPDATE', next, `${authorName} copied ${targetName} routine from previous week`);
       return next;
     });
+
+    showToast({
+      id: String(Date.now()),
+      title: 'Routine Copied! 📋',
+      message: `${targetName} routine copied from previous week.`,
+      authorName: 'Wolfy',
+      type: 'schedule_update',
+    });
     playChime('success');
-  }, [previousWeekSchedule, settings.pairCode]);
+  }, [previousWeekSchedule, activeUser, settings, addNotification, showToast]);
 
   const startFromScratch = useCallback(() => {
     setSchedule((current) => {

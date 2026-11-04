@@ -17,12 +17,12 @@ import {
 } from 'lucide-react';
 
 const COMMON_TASK_PRESETS = [
-  { title: 'Pick up child from school', time: '3:30 PM', category: 'school' },
+  { title: 'Take Wolfy on afternoon walk', time: '3:30 PM', category: 'wolfy' },
   { title: 'Get chicken out of freezer', time: '10:00 AM', category: 'groceries' },
   { title: 'Vet appointment for Wolfy', time: '4:00 PM', category: 'wolfy' },
   { title: 'Pick up parcel from post office', time: '1:00 PM', category: 'errand' },
   { title: 'Doctor appointment', time: '9:00 AM', category: 'appointment' },
-  { title: 'Pick up groceries / milk', time: '5:30 PM', category: 'errand' },
+  { title: 'Pick up groceries / milk', time: '5:30 PM', category: 'groceries' },
   { title: 'Give Wolfy flea & tick treatment', time: '7:00 PM', category: 'wolfy' },
 ];
 
@@ -211,7 +211,7 @@ export const AssignTaskModal: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Thursday 4pm pick up child from school"
+              placeholder="e.g. Thursday 4pm pick up parcel from post office"
               className="w-full px-3.5 py-2.5 rounded-xl bg-stone-950 border border-stone-700 text-sm text-stone-100 focus:border-amber-500 focus:outline-hidden"
               required
               autoFocus
@@ -257,11 +257,11 @@ export const AssignTaskModal: React.FC = () => {
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {[
-                { id: 'school', label: 'School / Kids' },
-                { id: 'groceries', label: 'Food & Meals' },
                 { id: 'wolfy', label: 'Wolfy Care' },
+                { id: 'groceries', label: 'Food & Meals' },
                 { id: 'appointment', label: 'Appointment' },
                 { id: 'errand', label: 'Errands' },
+                { id: 'household', label: 'Household' },
               ].map((c) => (
                 <button
                   key={c.id}

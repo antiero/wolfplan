@@ -139,4 +139,8 @@ export interface AppSettings {
   hasCompletedFirstWeek?: boolean;
   previousWeekSchedule?: DaySchedule[];
   dailyBriefingPopupEnabled?: boolean;
+  customDaytimePresets?: string[];
+  customEveningPresets?: string[];
+  customActivityChipsAM?: string[];
+  customActivityChipsPM?: string[];
 }
